@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Usuarios {
+  id                  Int           @id @default(autoincrement())
+  email               String        @unique
+  password_hash       String
+  rol                 String
+  nombre              String
+  estado              String        @default("activo")
+  creado_en           String        @default(dbgenerated("ahora()"))
+  perfil              Perfiles?
+  solicitudes_asesor  Solicitudes[] @relation("SolicitudAsesor")
+  solicitudes_cliente Solicitudes[] @relation("SolicitudCliente")
+  informes            Informes[]    @relation("InformeAsesor")
+  normas              Normas[]      @relation("NormaSubidaPor")
+  tokens              Tokens[]
+  identidades         Identidades[]
+  documentos          Documentos[]  @relation("DocumentoAsesor")
+
+  @@map("usuarios")
+}
+
+model Perfiles {
+  usuario_id         Int      @id
+  slug               String   @unique
+  titulo             String   @default("")
+  registro           String   @default("")
+  materias           String   @default("")
+  ubicacion          String   @default("")
+  bio                String   @default("")
+  precio_informe     Int      @default(3000)
+  instrucciones_pago String   @default("")
+  publicado          Int      @default(1)
+  meta_semanal       Int      @default(3)
+  usuario            Usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("perfiles")
+}
+
+model Solicitudes {
+  id                  Int           @id @default(autoincrement())
+  codigo              String        @unique
+  asesor_id           Int
+  cliente_id          Int?
+  materia             String
+  region              String        @default("")
+  urgencia            String        @default("normal")
+  presupuesto         String        @default("")
+  relato_enc          String
+  nombre_enc          String
+  email_enc           String
+  telefono_enc        String        @default("")
+  estado              String        @default("nueva")
+  motivo_rechazo      String        @default("")
+  derivar_ok          Int           @default(0)
+  abogado_destino_enc String        @default("")
+  abogado_confirmado  Int           @default(0)
+  proximo_contacto    String        @default("")
+  resultado           String        @default("")
+  origen              String        @default("web")
+  conservar_datos     Int           @default(0)
+  terminos_version    String        @default("")
+  anonimizada_en      String        @default("")
+  creado_en           String        @default(dbgenerated("ahora()"))
+  actualizado_en      String        @default(dbgenerated("ahora()"))
+  asesor              Usuarios      @relation("SolicitudAsesor", fields: [asesor_id], references: [id])
+  cliente             Usuarios?     @relation("SolicitudCliente", fields: [cliente_id], references: [id])
+  informe             Informes?
+  pendientes          Pendientes[]
+  seguimiento         Seguimiento[]
+  documentos          Documentos[]
+
+  @@index([asesor_id, estado], map: "idx_solicitudes_asesor")
+  @@index([cliente_id], map: "idx_solicitudes_cliente")
+  @@map("solicitudes")
+}
+
+model Informes {
+  id             Int         @id @default(autoincrement())
+  solicitud_id   Int         @unique
+  asesor_id      Int
+  contenido_enc  String
+  estado         String      @default("borrador")
+  entregado      Int         @default(0)
+  creado_en      String      @default(dbgenerated("ahora()"))
+  actualizado_en String      @default(dbgenerated("ahora()"))
+  solicitud      Solicitudes @relation(fields: [solicitud_id], references: [id], onDelete: Cascade)
+  asesor         Usuarios    @relation("InformeAsesor", fields: [asesor_id], references: [id])
+
+  @@map("informes")
+}
+
+model Pendientes {
+  id           Int         @id @default(autoincrement())
+  solicitud_id Int
+  texto_enc    String
+  hecho        Int         @default(0)
+  creado_en    String      @default(dbgenerated("ahora()"))
+  solicitud    Solicitudes @relation(fields: [solicitud_id], references: [id], onDelete: Cascade)
+
+  @@index([solicitud_id], map: "idx_pendientes_solicitud")
+  @@map("pendientes")
+}
+
+model Seguimiento {
+  id           Int         @id @default(autoincrement())
+  solicitud_id Int
+  tipo         String
+  texto_enc    String
+  creado_en    String      @default(dbgenerated("ahora()"))
+  solicitud    Solicitudes @relation(fields: [solicitud_id], references: [id], onDelete: Cascade)
+
+  @@index([solicitud_id], map: "idx_seguimiento_solicitud")
+  @@map("seguimiento")
+}
+
+model Normas {
+  id             Int         @id @default(autoincrement())
+  nombre         String
+  materia        String
+  fuente         String      @default("")
+  archivo        String      @default("")
+  bcn_id         String      @default("")
+  version        String      @default("")
+  subido_por     Int?
+  creado_en      String      @default(dbgenerated("ahora()"))
+  revisada_en    String      @default("")
+  modo           String      @default("articulos")
+  error_revision String      @default("")
+  usuario        Usuarios?   @relation("NormaSubidaPor", fields: [subido_por], references: [id])
+  articulos      Articulos[]
+
+  @@map("normas")
+}
+
+model Articulos {
+  id           Int                      @id @default(autoincrement())
+  norma_id     Int
+  numero       String
+  texto        String
+  busqueda     String                   @default("")
+  busqueda_tsv Unsupported("tsvector")?
+  norma        Normas                   @relation(fields: [norma_id], references: [id], onDelete: Cascade)
+
+  @@index([norma_id], map: "idx_articulos_norma")
+  @@map("articulos")
+}
+
+model Auditoria {
+  id         Int    @id @default(autoincrement())
+  usuario_id Int?
+  accion     String
+  entidad    String @default("")
+  entidad_id Int?
+  creado_en  String @default(dbgenerated("ahora()"))
+
+  @@map("auditoria")
+}
+
+model Limites {
+  clave  String @id
+  cuenta Int
+  hasta  BigInt
+
+  @@map("limites")
+}
+
+model Tokens {
+  hash       String   @id
+  usuario_id Int
+  tipo       String
+  vence      BigInt
+  usado      Int      @default(0)
+  usuario    Usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("tokens")
+}
+
+model Identidades {
+  proveedor  String
+  sub        String
+  usuario_id Int
+  usuario    Usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@id([proveedor, sub])
+  @@map("identidades")
+}
+
+model Meta {
+  clave String @id
+  valor String
+
+  @@map("meta")
+}
+
+model ConsultasLog {
+  id         Int    @id @default(autoincrement())
+  materia    String
+  resultados Int
+  creado_en  String @default(dbgenerated("ahora()"))
+
+  @@index([creado_en], map: "idx_consultas_log_fecha")
+  @@map("consultas_log")
+}
+
+model Documentos {
+  id            Int         @id @default(autoincrement())
+  solicitud_id  Int
+  asesor_id     Int
+  nombre_enc    String
+  resultado_enc String
+  pasado        Int         @default(0)
+  creado_en     String      @default(dbgenerated("ahora()"))
+  solicitud     Solicitudes @relation(fields: [solicitud_id], references: [id], onDelete: Cascade)
+  asesor        Usuarios    @relation("DocumentoAsesor", fields: [asesor_id], references: [id])
+
+  @@index([solicitud_id], map: "idx_documentos_solicitud")
+  @@map("documentos")
+}

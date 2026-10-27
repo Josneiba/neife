@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": [
+    "gru1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/recordatorios",
+      "schedule": "0 11 * * 1-5"
+    },
+    {
+      "path": "/api/cron/normas",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/privacidad",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/limpiar",
+      "schedule": "0 8 1 * *"
+    }
+  ]
+}

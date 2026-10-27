@@ -1,0 +1,27 @@
+NORMA DE EJEMPLO PARA PRUEBAS
+(Este texto es inventado. NO es una ley real y no sirve para ningún caso verdadero.
+Existe solo para probar que el sistema separa y busca artículos.)
+
+TÍTULO I. DEL TÉRMINO DE LA RELACIÓN DE TRABAJO
+
+Artículo 1°.- La relación de trabajo puede terminar por acuerdo de las partes, por renuncia del trabajador o por decisión del empleador, siempre que esta última se comunique por escrito y exprese la causa que la fundamenta.
+
+Artículo 2°.- El empleador que ponga término al contrato de trabajo deberá entregar al trabajador una carta de aviso con al menos treinta días de anticipación. Si no lo hiciere, deberá pagar una indemnización sustitutiva equivalente a la última remuneración mensual.
+
+Artículo 3°.- El finiquito deberá constar por escrito, ser firmado por el trabajador y el empleador, y detallar los pagos que se efectúan, incluidas las remuneraciones pendientes y las vacaciones no tomadas.
+
+Artículo 4°.- El trabajador que estime injustificado su despido podrá reclamar ante el organismo competente dentro del plazo de sesenta días hábiles contados desde la separación.
+
+TÍTULO II. DE LAS REMUNERACIONES
+
+Artículo 5°.- La remuneración deberá pagarse en dinero y en períodos que no excedan de un mes. El empleador entregará mensualmente una liquidación de sueldo con el detalle de los pagos y descuentos.
+
+Artículo 6°.- Las cotizaciones previsionales y de salud deberán ser declaradas y pagadas por el empleador dentro de los diez primeros días del mes siguiente al pago de la remuneración.
+
+Artículo 7°.- El atraso en el pago de las remuneraciones o de las cotizaciones obligará al empleador a pagar los reajustes e intereses que correspondan.
+
+TÍTULO III. DE LAS PENSIONES ENTRE FAMILIARES (SOLO PARA PRUEBAS)
+
+Artículo 8°.- Quien deba alimentos a un hijo menor de edad pagará una pensión mensual proporcional a los ingresos del obligado y a las necesidades del alimentario.
+
+Artículo 9°.- El atraso en el pago de la pensión de alimentos facultará a quien la recibe para solicitar su cobro ante el tribunal de familia del domicilio del alimentario.

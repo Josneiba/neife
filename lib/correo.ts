@@ -1,0 +1,103 @@
+import { Resend } from "resend";
+import { urlSitio } from "./sitio";
+
+/**
+ * Envío de correos con Resend.
+ * Sin RESEND_API_KEY (en tu computador) el correo se muestra en la consola en vez de enviarse.
+ * Los correos no llevan el relato del caso: solo avisan y traen un enlace.
+ */
+
+const NOMBRE = "Neife";
+
+function remitente(): string {
+  return process.env.EMAIL_FROM || `${NOMBRE} <onboarding@resend.dev>`;
+}
+
+export async function enviarCorreo(p: { para: string; asunto: string; texto: string; html?: string }): Promise<boolean> {
+  const clave = process.env.RESEND_API_KEY;
+  if (!clave) {
+    console.log(`\n[correo no enviado: falta RESEND_API_KEY]\nPara: ${p.para}\nAsunto: ${p.asunto}\n${p.texto}\n`);
+    return false;
+  }
+  try {
+    const r = await new Resend(clave).emails.send({
+      from: remitente(),
+      to: p.para,
+      subject: p.asunto,
+      text: p.texto,
+      html: p.html ?? plantilla(p.asunto, p.texto),
+    });
+    if (r.error) {
+      console.error("Resend:", r.error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("Resend:", e instanceof Error ? e.message : e);
+    return false;
+  }
+}
+
+function escapar(t: string): string {
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** HTML simple y sobrio. Los enlaces sueltos se vuelven botones discretos. */
+function plantilla(asunto: string, texto: string): string {
+  const cuerpo = escapar(texto)
+    .split("\n\n")
+    .map((p) =>
+      p.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" style="color:#3B4848;font-weight:600">$1</a>').replace(/\n/g, "<br>"),
+    )
+    .map((p) => `<p style="margin:0 0 14px;line-height:1.55">${p}</p>`)
+    .join("");
+  return `<!doctype html><html lang="es"><body style="margin:0;background:#f6efe6;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#3B4848">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-top:4px solid #88584E;padding:28px">
+<p style="margin:0 0 18px;font-weight:700;color:#88584E">${NOMBRE}</p>${cuerpo}
+<p style="margin:22px 0 0;font-size:12px;color:#71959F">${escapar(asunto)} · ${urlSitio()}</p></div></body></html>`;
+}
+
+export const correos = {
+  recuperar(para: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Recupera tu contraseña",
+      texto: `Pediste cambiar tu contraseña.\n\nUsa este enlace, vale por 1 hora:\n${enlace}\n\nSi no fuiste tú, ignora este correo: tu cuenta sigue igual.`,
+    });
+  },
+  nuevaSolicitud(para: string, materia: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: `Nueva solicitud: ${materia}`,
+      texto: `Llegó una solicitud nueva de ${materia}.\n\nResponde pronto: el primer contacto es lo que más pesa para cerrar.\n${enlace}`,
+    });
+  },
+  confirmacion(para: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Recibimos tu solicitud",
+      texto: `Tu solicitud llegó al asesor. Te va a contactar por este medio o por teléfono.\n\nSigue el avance aquí, sin necesidad de cuenta:\n${enlace}\n\nGuarda este enlace: es la única forma de volver a ver tu caso.`,
+    });
+  },
+  avance(para: string, texto: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Novedades de tu solicitud",
+      texto: `${texto}\n\nMira el avance completo aquí:\n${enlace}`,
+    });
+  },
+  informeListo(para: string, nombreAsesor: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Tu informe está listo",
+      texto: `${nombreAsesor} dejó listo tu informe.\n\nPuedes verlo y descargarlo en PDF aquí:\n${enlace}`,
+    });
+  },
+  recordatorio(para: string, resumen: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Contactos pendientes de hoy",
+      texto: `${resumen}\n\nAbre tu panel:\n${enlace}`,
+    });
+  },
+};
