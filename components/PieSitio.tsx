@@ -7,7 +7,7 @@ export function PieSitio() {
     <footer className="pie">
       <div className="contenedor pie-interior">
         <div className="pie-marca">
-          <Logo sobreOscuro />
+          <Logo />
           <p>© {new Date().getFullYear()} {SITIO.nombre}. Orientación legal en {SITIO.ciudad}. No reemplaza a un abogado.</p>
         </div>
         <nav className="pie-enlaces" aria-label="Información">

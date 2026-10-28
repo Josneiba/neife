@@ -322,10 +322,16 @@ test("errores: traduce fallas técnicas a frases claras", async () => {
 });
 
 test("biblioteca: detecta la materia y nombra el archivo", async () => {
-  const { detectarMateria, nombreDeArchivo } = await import("../lib/materia-auto");
+  const { detectarMateria, detectarMateriaRelato, nombreDeArchivo } = await import("../lib/materia-auto");
+  const { normalizarConsulta } = await import("../lib/normas");
   assert.equal(detectarMateria("El empleador deberá pagar la remuneración y el finiquito del trabajador. Despido, cotizaciones previsionales, jornada y feriado del trabajador.", "Código del Trabajo"), "laboral");
   assert.equal(detectarMateria("El arrendador y el arrendatario acuerdan la renta del arriendo de la vivienda; desahucio y garantía del inmueble arrendado.", "Ley de arrendamiento"), "arriendo");
   assert.equal(detectarMateria("Texto sin relación con ninguna materia en particular, sobre jardines y plantas.", "Apuntes"), "otra");
+  assert.equal(detectarMateriaRelato("Me despidieron y no me han pagado el finiquito ni las remuneraciones pendientes."), "laboral");
+  assert.equal(detectarMateriaRelato("Me ecahon del tabjo, no me apado el finiquito."), "laboral");
+  assert.equal(detectarMateriaRelato("No sé cuál es el problema legal; quiero saber qué puedo hacer."), null);
+  assert.match(normalizarConsulta("Me ecahon del tabjo, no me apado el finiquito."), /echaron del trabajo, no me pagado el finiquito/);
+  assert.match(normalizarConsulta("No sé cuál es el problema legal; quiero saber qué puedo hacer."), /quiero saber/);
   assert.equal(nombreDeArchivo("ley_19496-consumidor.pdf"), "Ley 19496 consumidor");
 });
 
@@ -496,7 +502,11 @@ test("leyes base: carga rápida e idempotente, y la búsqueda encuentra lo perti
   const r = await buscarArticulos("Me despidieron sin carta de aviso y no me pagaron el finiquito.", { materia: "laboral", limite: 8 });
   assert.ok(Date.now() - t1 < 1500);
   assert.ok(r.some((x) => x.norma.startsWith("Código del Trabajo") && ["162", "168", "177"].includes(x.numero)));
+  assert.equal(r[0].numero, "177", "el finiquito debe priorizar su artículo específico");
+  assert.ok(!r.some((x) => ["163 bis", "32", "197 bis"].includes(x.numero) || x.norma.startsWith("Ley 20.351")));
   assert.ok(r.every((x) => !esModificatorio(x.texto)), "no se devuelven artículos que solo modifican otra ley");
+  const soloSueldo = await buscarArticulos("No me han pagado el sueldo ni las remuneraciones que me deben.", { materia: "laboral", limite: 8 });
+  assert.ok(!soloSueldo.some((x) => x.numero === "63 bis"), "el pago del finiquito no se sugiere si no hay término laboral descrito");
   const c = await buscarArticulos("Me cobran una deuda de hace siete años, ¿prescribió?", { materia: "civil", limite: 8 });
   assert.ok(c.some((x) => x.norma.startsWith("Código Civil") && x.numero === "2515"));
 });

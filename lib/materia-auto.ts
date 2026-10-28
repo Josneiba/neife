@@ -1,4 +1,5 @@
-import { raices } from "./normas";
+import { normalizarConsulta, raices } from "./normas";
+import type { MateriaClave } from "./materias";
 
 /**
  * Adivina la materia de un documento por sus palabras. Es una ayuda para el administrador:
@@ -32,6 +33,61 @@ export function detectarMateria(texto: string, nombre = ""): string {
   }
   // Exige una señal mínima y que gane con holgura.
   return puntaje >= 6 && puntaje >= segundo * 1.25 ? mejor : "otra";
+}
+
+const SEÑALES_RELATO: Record<string, { palabras: string; fuertes: string }> = {
+  laboral: {
+    palabras: "trabajo trabajador trabajadora empleador jefe despido despidieron despedido echaron finiquito sueldo salario remuneración remuneraciones cotización cotizaciones liquidación previsional sindicato jornada horas extras vacaciones licencia",
+    fuertes: "despido despidieron despedido echaron finiquito remuneración cotizaciones",
+  },
+  familia: {
+    palabras: "pensión alimentos alimenticia hijo hija hijos divorcio divorciarme separación matrimonio visitas cuidado personal tuición adopción violencia intrafamiliar pareja",
+    fuertes: "alimentos divorcio divorciarme pensión tuición",
+  },
+  civil: {
+    palabras: "deuda deudas pagar pagué contrato incumplimiento herencia sucesión propiedad vecino indemnización pagaré prescripción préstamo",
+    fuertes: "herencia prescripción pagaré incumplimiento",
+  },
+  penal: {
+    palabras: "estafa estafaron robo robaron hurto golpearon amenazaron delito denuncia querella fiscalía detenido detención fraude",
+    fuertes: "estafa estafaron robo robaron delito",
+  },
+  consumidor: {
+    palabras: "producto servicio compra compré tienda proveedor garantía garantía sernac devolución devolución publicidad banco tarjeta cobro",
+    fuertes: "sernac garantía producto",
+  },
+  arriendo: {
+    palabras: "arriendo arrendador arrendatario arrendar arriendo arrendamiento renta alquiler desalojo desalojar arrendamiento vivienda departamento garantía",
+    fuertes: "arriendo arrendador arrendatario desalojo arrendamiento",
+  },
+};
+
+const SEÑALES_NORMALIZADAS = Object.fromEntries(
+  Object.entries(SEÑALES_RELATO).map(([materia, señales]) => [
+    materia,
+    {
+      palabras: new Set(raices(normalizarConsulta(señales.palabras))),
+      fuertes: new Set(raices(normalizarConsulta(señales.fuertes))),
+    },
+  ]),
+);
+
+/** Infiera el área jurídica solo cuando el relato contiene indicios suficientes; null significa que debe buscarse sin filtro. */
+export function detectarMateriaRelato(texto: string): MateriaClave | null {
+  const palabras = new Set(raices(normalizarConsulta(texto)));
+  const puntajes = Object.entries(SEÑALES_NORMALIZADAS)
+    .map(([materia, señales]) => {
+      let puntaje = 0;
+      for (const palabra of señales.palabras) {
+        if (palabras.has(palabra)) puntaje += señales.fuertes.has(palabra) ? 3 : 1;
+      }
+      return { materia, puntaje };
+    })
+    .sort((a, b) => b.puntaje - a.puntaje);
+  const [mejor, segundo] = puntajes;
+  return mejor.puntaje >= 3 && mejor.puntaje >= (segundo?.puntaje ?? 0) + 2
+    ? mejor.materia as MateriaClave
+    : null;
 }
 
 /** Nombre legible a partir del nombre de archivo: «ley_19496-consumidor.pdf» → «Ley 19496 consumidor». */

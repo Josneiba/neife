@@ -26,6 +26,7 @@ export function FlujoOrientacion(props: Props) {
   const [pendientes, setPendientes] = useState<string[]>([]);
   const [sinBase, setSinBase] = useState(false);
   const [ctx, setCtx] = useState<Contexto | null>(null);
+  const [materiaDetectada, setMateriaDetectada] = useState<string | null>(null);
   const [consultando, iniciar] = useTransition();
   const [verTodas, setVerTodas] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
@@ -60,6 +61,7 @@ export function FlujoOrientacion(props: Props) {
         setPendientes(r.pendientes ?? []);
         setSinBase(Boolean(r.sinBase));
         setCtx(r.contexto);
+        setMateriaDetectada(r.materiaDetectada);
         requestAnimationFrame(() => document.getElementById("resultado")?.scrollIntoView({ behavior: "smooth", block: "start" }));
       } else setErrores({ relato: r.error });
     });
@@ -125,11 +127,33 @@ export function FlujoOrientacion(props: Props) {
       {normas ? (
         <section id="resultado" style={{ marginTop: 48 }} aria-labelledby="t-normas">
           <h2 id="t-normas" style={{ fontSize: "1.375rem" }}>
-            Orientación general: {MATERIAS.find((m) => m.clave === materia)?.nombre}
+            Orientación general: {MATERIAS.find((m) => m.clave === (materiaDetectada ?? materia))?.nombre}
           </h2>
           <p className="ayuda" style={{ marginTop: 6 }}>
             Según lo que describes, estas son las normas que podrían respaldarte y las vías habituales. Un abogado debe confirmarlo.
           </p>
+
+          {materiaDetectada ? (
+            <p className="ayuda" role="status" style={{ marginTop: 8 }}>
+              Como elegiste «Otra o no sé», buscamos el área más cercana a partir de tu relato: <strong>{MATERIAS.find((m) => m.clave === materiaDetectada)?.nombre}</strong>. Puedes cambiar la materia y consultar otra vez.
+            </p>
+          ) : materia === "otra" ? (
+            <p className="ayuda" role="status" style={{ marginTop: 8 }}>
+              No pudimos determinar una sola materia. Buscamos en todas las áreas para mostrarte posibles referencias.
+            </p>
+          ) : null}
+
+          <section className="llamada-asesoria llamada-asesoria-destacada" aria-labelledby="t-buscar-asesoria">
+            <div>
+              <h3 id="t-buscar-asesoria">¿Quieres que un profesional revise tu caso?</h3>
+              <p>Un abogado puede confirmar qué normas aplican, revisar tus plazos y orientarte sobre los próximos pasos.</p>
+            </div>
+            {props.puedeSolicitar ? (
+              <a href="#solicitud" className="btn btn-primario">Buscar asesoría legal</a>
+            ) : (
+              <Link href="/asesoria" className="btn btn-primario">Buscar asesoría legal</Link>
+            )}
+          </section>
 
           {pendientes.length && !sinBase ? (
             <p className="ayuda" role="note">
@@ -139,7 +163,7 @@ export function FlujoOrientacion(props: Props) {
 
           <h3 className="res-t">Normas que podrían favorecerte</h3>
           {normas.length === 0 ? (
-            <p>{sinBase ? `Para esta materia aún no tenemos cargada la norma principal (${pendientes.join(", ")}). Preferimos no mostrarte resultados parciales que podrían orientarte mal. Un asesor puede revisar tu caso igual.` : materia === "otra" ? "Para evitar sugerirte normas de otra área, elige la materia que más se acerque a tu caso y vuelve a consultar." : "No hay normas en la biblioteca para este relato. Un asesor puede revisarlo igual."}</p>
+            <p>{sinBase ? `Para esta materia aún no tenemos cargada la norma principal (${pendientes.join(", ")}). Preferimos no mostrarte resultados parciales que podrían orientarte mal. Un asesor puede revisar tu caso igual.` : materia === "otra" ? "No encontramos referencias con suficiente relación al relato. Prueba agregar qué ocurrió, cuándo y qué necesitas resolver, o pide a un profesional que revise tu situación." : "No hay normas en la biblioteca con suficiente relación a este relato. Un profesional puede revisarlo igual."}</p>
           ) : (
             <ul className="normas-lista">
               {(verTodas ? normas : normas.slice(0, 3)).map((n) => (
@@ -170,14 +194,16 @@ export function FlujoOrientacion(props: Props) {
 
           {ctx ? (
             <div className="res-grid">
-              <div>
-                <h3 className="res-t">Derechos que suelen estar en juego</h3>
-                <ul className="lista-simple">
-                  {ctx.derechos.map((d) => (
-                    <li key={d}>{d}</li>
-                  ))}
-                </ul>
-              </div>
+              {ctx.derechos.length ? (
+                <div>
+                  <h3 className="res-t">Derechos que suelen estar en juego</h3>
+                  <ul className="lista-simple">
+                    {ctx.derechos.map((d) => (
+                      <li key={d}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <div>
                 <h3 className="res-t">Dónde se acude</h3>
                 <p>{ctx.vias}</p>
@@ -189,18 +215,6 @@ export function FlujoOrientacion(props: Props) {
           <p className="ayuda" style={{ marginTop: 16 }}>
             Orientación general, no es asesoría jurídica ni reemplaza a un abogado. Los plazos y la vigencia de cada norma deben verificarse.
           </p>
-
-          <section className="llamada-asesoria" aria-labelledby="t-buscar-asesoria">
-            <div>
-              <h3 id="t-buscar-asesoria">¿Necesitas aplicar estas normas a tu situación?</h3>
-              <p>Un profesional puede revisar tus antecedentes, plazos y próximos pasos. La orientación de esta página es solo un punto de partida.</p>
-            </div>
-            {props.puedeSolicitar ? (
-              <a href="#solicitud" className="btn btn-primario">Buscar asesoría legal</a>
-            ) : (
-              <Link href="/asesoria" className="btn btn-primario">Buscar asesoría legal</Link>
-            )}
-          </section>
 
           <div id="solicitud" style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--borde)", scrollMarginTop: 12 }}>
             <h2 style={{ fontSize: "1.375rem" }}>¿Quieres ayuda de un abogado?</h2>
@@ -219,8 +233,8 @@ export function FlujoOrientacion(props: Props) {
           </div>
         </section>
       ) : null}
-      {normas && props.puedeSolicitar && !formVisible ? (
-        <a href="#solicitud" className="cta-fija btn btn-primario">
+      {normas && !formVisible ? (
+        <a href={props.puedeSolicitar ? "#solicitud" : "/asesoria"} className="cta-fija btn btn-primario">
           <Icono nombre="enviar" tam={17} /> Pedir ayuda de un abogado
         </a>
       ) : null}

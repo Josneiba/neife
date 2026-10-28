@@ -581,33 +581,36 @@ a:hover {
 .legal-intro {
   margin-top: 12px;
 }
+.aviso-cookies-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 20px;
+  background: rgba(25, 33, 33, .68);
+}
 .aviso-cookies {
-  padding: 14px 0;
-  background: var(--azul-claro);
-  border-top: 1px solid var(--borde);
-}
-.aviso-cookies-interior {
-  max-width: 1000px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 16px;
+  width: min(100%, 560px);
+  padding: clamp(22px, 5vw, 36px);
+  color: var(--pizarra);
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .28);
 }
-.aviso-cookies p {
-  font-size: 0.9rem;
-  flex: 1 1 380px;
-}
-.aviso-cookies-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.aviso-cookies h2 { font-size: clamp(1.4rem, 4vw, 1.8rem); }
+.aviso-cookies p { font-size: 1rem; }
+.aviso-cookies-acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+.aviso-cookies-acciones .btn { flex: 1 1 190px; min-height: 48px; }
+.aviso-cookies a { font-weight: 600; }
 .aviso-cookies-error { flex-basis: 100%; }
-.aviso-cookies a {
-  font-weight: 600;
-}
 @media (max-width: 640px) {
-  .aviso-cookies-interior {
-    align-items: stretch;
-    flex-direction: column;
-  }
+  .aviso-cookies-acciones { flex-direction: column; }
+  .aviso-cookies-acciones .btn { width: 100%; }
 }
 .preferencias-cookies {
   display: grid;
@@ -1345,6 +1348,11 @@ legend {
   border-radius: var(--radio);
   background: var(--crema-claro);
 }
+.llamada-asesoria-destacada {
+  margin: 22px 0 28px;
+  border: 2px solid var(--cafe);
+  box-shadow: 0 4px 16px rgba(59, 72, 72, .08);
+}
 .llamada-asesoria h3 { margin: 0; font-size: 1.1rem; }
 .llamada-asesoria p { margin-top: 6px; max-width: 58ch; }
 
@@ -1429,8 +1437,7 @@ legend {
 .pie-marca p { color: var(--crema); font-size: .875rem; line-height: 1.5; }
 .pie-enlaces { display: grid; grid-template-columns: repeat(2, minmax(120px, auto)); gap: 4px 20px; }
 .pie-enlaces a { display: flex; align-items: center; min-height: 40px; text-decoration: none; }
-.pie .logo-placa { display: inline-flex; padding: 6px 10px; }
-.pie .logo-placa .logo-img { height: 46px; }
+.pie .logo-img { height: 46px; }
 @media (max-width: 860px) {
   .inicio-hero { grid-template-columns: 1fr; gap: 24px; padding-top: 28px; }
   .situaciones { grid-template-columns: 1fr 1fr; }
@@ -1452,7 +1459,7 @@ legend {
   .pie-interior { grid-template-columns: 1fr; gap: 18px; }
   .pie-enlaces { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; padding-top: 10px; border-top: 1px solid rgba(228, 207, 187, .35); }
   .pie-enlaces a { min-height: 44px; }
-  .pie .logo-placa .logo-img { height: 42px; }
+  .pie .logo-img { height: 42px; }
 }
 
 .datos-persona { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--borde); display: grid; gap: 10px; }
