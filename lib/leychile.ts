@@ -92,12 +92,38 @@ export type NormaLeyChile = {
 
 type Nodo = Record<string, unknown>;
 
+const ENTIDADES_XML: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+};
+
+function decodificarEntidadesXml(valor: string): string {
+  return valor
+    .replace(/&#(\d+);/g, (entidad, codigo: string) => {
+      const punto = Number(codigo);
+      return Number.isInteger(punto) && punto >= 0 && punto <= 0x10ffff
+        ? String.fromCodePoint(punto)
+        : entidad;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (entidad, codigo: string) => {
+      const punto = Number.parseInt(codigo, 16);
+      return Number.isInteger(punto) && punto >= 0 && punto <= 0x10ffff
+        ? String.fromCodePoint(punto)
+        : entidad;
+    })
+    .replace(/&(amp|lt|gt|quot|apos);/g, (entidad, nombre: string) => ENTIDADES_XML[nombre] ?? entidad);
+}
+
 function texto(n: unknown): string {
-  if (typeof n === "string") return n;
+  if (typeof n === "string") return decodificarEntidadesXml(n);
   if (typeof n === "number") return String(n);
   if (n && typeof n === "object") {
     const t = (n as Nodo)["#text"];
-    if (typeof t === "string" || typeof t === "number") return String(t);
+    if (typeof t === "string") return decodificarEntidadesXml(t);
+    if (typeof t === "number") return String(t);
   }
   return "";
 }
@@ -143,7 +169,7 @@ export function parsearNorma(xml: string): NormaLeyChile {
   const recorrer = (nodos: Nodo[]) => {
     for (const n of nodos) {
       if (String(n["@_derogado"] ?? "") === "derogado") continue;
-      const tipo = String(n["@_tipoParte"] ?? "");
+      const tipo = decodificarEntidadesXml(String(n["@_tipoParte"] ?? ""));
       const hijos = lista(((n.EstructurasFuncionales ?? {}) as Nodo).EstructuraFuncional as Nodo | Nodo[] | undefined);
       if (tipo === "Artículo") {
         const cuerpo = limpiarTexto(texto(n.Texto));
@@ -162,12 +188,13 @@ export function parsearNorma(xml: string): NormaLeyChile {
   const ident = (meta.Identificador ?? {}) as Nodo;
   const tipos = lista(((ident.TiposNumeros ?? {}) as Nodo).TipoNumero as Nodo | Nodo[] | undefined);
   const identificadores = tipos.map((t) => `${texto(t.Tipo)} ${texto(t.Numero)}`.trim()).filter(Boolean);
+  const version = String(raiz["@_fechaVersion"] ?? "");
 
   return {
     identificadores,
     idNorma: String(raiz["@_normaId"] ?? ""),
     titulo,
-    version: String(raiz["@_fechaVersion"] ?? ""),
+    version: version === "2222-02-02" ? "" : version,
     derogada: String(raiz["@_derogado"] ?? "") === "derogado",
     piezas,
   };

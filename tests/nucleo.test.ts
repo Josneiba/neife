@@ -367,6 +367,7 @@ test("LeyChile: lee el XML por artículo, omite derogados y reconoce el número"
     <EstructuraFuncional tipoParte="Artículo" idParte="2" derogado="no derogado"><Texto>Artículo 1º.- El trabajador tendrá derecho a feriado.</Texto></EstructuraFuncional>
     <EstructuraFuncional tipoParte="Artículo" idParte="3" derogado="derogado"><Texto>Artículo 2º.- Derogado.</Texto></EstructuraFuncional>
     <EstructuraFuncional tipoParte="Artículo" idParte="4" derogado="no derogado"><Texto>Artículo 3º bis.- El empleador pagará el finiquito.</Texto></EstructuraFuncional>
+    <EstructuraFuncional tipoParte="Art&#237;culo" idParte="6" derogado="no derogado"><Texto>Art&#237;culo 4&#186;.- El trabajador recibir&#225; finiquito.</Texto></EstructuraFuncional>
    </EstructurasFuncionales>
   </EstructuraFuncional>
   <EstructuraFuncional tipoParte="Artículo" transitorio="transitorio" idParte="5" derogado="no derogado"><Texto>Artículo primero.- Esta ley rige desde su publicación.</Texto></EstructuraFuncional>
@@ -375,8 +376,10 @@ test("LeyChile: lee el XML por artículo, omite derogados y reconoce el número"
   const n = parsearNorma(xml);
   assert.equal(n.titulo, "LEY DE PRUEBA");
   assert.equal(n.version, "2026-07-23");
-  assert.deepEqual(n.piezas.map((p) => p.numero), ["1", "3 bis", "primero transitorio"]);
+  assert.deepEqual(n.piezas.map((p) => p.numero), ["1", "3 bis", "4", "primero transitorio"]);
   assert.ok(n.piezas[1].texto.includes("finiquito"));
+  assert.ok(n.piezas[2].texto.includes("recibirá finiquito"));
+  assert.equal(parsearNorma(xml.replace('fechaVersion="2026-07-23"', 'fechaVersion="2222-02-02"')).version, "");
   assert.equal(idNormaDesde("207436"), "207436");
   assert.equal(idNormaDesde("https://www.bcn.cl/leychile/navegar?idNorma=207436&idVersion=2026"), "207436");
   assert.equal(idNormaDesde("https://www.bcn.cl/leychile/navegar?i=1181003"), "1181003");
