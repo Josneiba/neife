@@ -22,8 +22,11 @@ export default async function Asesoria() {
       </div>
 
       {asesores.length === 0 ? (
-        <div className="aviso aviso-espera" style={{ marginTop: 32 }}>
-          Todavía no hay asesores disponibles. Vuelve pronto.
+        <div className="aviso aviso-espera" role="status" style={{ marginTop: 32 }}>
+          <p>Todavía no hay asesores disponibles para recibir solicitudes. Mientras tanto, puedes contar tu caso y revisar normas oficiales relacionadas.</p>
+          <Link href="/asesoria/solicitar" className="btn btn-primario" style={{ marginTop: 12 }}>
+            Contar mi caso
+          </Link>
         </div>
       ) : (
         asesores.map((a) => (

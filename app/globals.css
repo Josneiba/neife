@@ -588,13 +588,37 @@ a:hover {
 }
 .aviso-cookies-interior {
   max-width: 1000px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .aviso-cookies p {
   font-size: 0.9rem;
+  flex: 1 1 380px;
 }
+.aviso-cookies-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.aviso-cookies-error { flex-basis: 100%; }
 .aviso-cookies a {
   font-weight: 600;
 }
+@media (max-width: 640px) {
+  .aviso-cookies-interior {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+.preferencias-cookies {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--fondo);
+}
+.preferencias-cookies h2 { margin: 0; font-size: 1.05rem; }
 .tabla-cookies {
   display: grid;
   border: 1px solid var(--borde);
@@ -1309,6 +1333,20 @@ legend {
 @media (max-width: 720px) { .res-grid { grid-template-columns: 1fr; } }
 .normas-lista .extracto { margin: 4px 0 4px; color: var(--pizarra); }
 .btn-ancho { display: flex; width: 100%; justify-content: center; }
+.llamada-asesoria {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--crema-claro);
+}
+.llamada-asesoria h3 { margin: 0; font-size: 1.1rem; }
+.llamada-asesoria p { margin-top: 6px; max-width: 58ch; }
 
 /* Barras de carga */
 .barra-nav { position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 100; pointer-events: none; transition: opacity .25s; }

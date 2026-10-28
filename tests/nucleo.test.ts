@@ -57,6 +57,13 @@ test("términos: el borrador no se confunde con una versión publicada", async (
 
   const contenido = TERMINOS_BASE.replace(/\[\[[^\]]+\]\]/g, "Responsable legal verificado");
   assert.equal(validarContenidoTerminos(contenido), undefined);
+  const borradorAdjunto = `${"Términos de uso. ".repeat(40)}
+    Última actualización: [día, mes y año]
+    Titular: [nombre completo o razón social]
+    RUT: [RUT del titular]
+    Domicilio: [domicilio comercial o legal]
+    Correo electrónico: [correo de contacto]`;
+  assert.match(validarContenidoTerminos(borradorAdjunto) ?? "", /campos pendientes entre corchetes/);
   const db = await import("../lib/db").then((m) => m.getDb());
   await db.execute({
     sql: "INSERT INTO meta (clave, valor) VALUES (?, ?) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor",
@@ -157,6 +164,42 @@ test("carga la norma de ejemplo y encuentra los artículos correctos", async () 
 
   await eliminarNorma(r.normaId);
   assert.equal((await buscarArticulos("despido")).length, 0, "al borrar la norma se borra también del índice");
+});
+
+test("sugerencias: un relato de arriendo no recibe artículos de familia por fallback", async () => {
+  const { crearNorma, buscarArticulos, eliminarNorma } = await import("../lib/normas");
+  const familia = await crearNorma({
+    nombre: "Ley mock familia",
+    materia: "familia",
+    fuente: "",
+    archivo: "mock-familia.txt",
+    usuarioId: null,
+    texto: readFileSync("ejemplos/mock-familia.txt", "utf8"),
+  });
+  const arriendo = await crearNorma({
+    nombre: "Ley mock arriendo",
+    materia: "arriendo",
+    fuente: "",
+    archivo: "mock-arriendos.txt",
+    usuarioId: null,
+    texto: readFileSync("ejemplos/mock-arriendos.txt", "utf8"),
+  });
+  const relatoArriendo =
+    "Mi arrendador no repara las filtraciones graves del departamento pese a mis reclamos escritos y quiero conocer mis opciones.";
+
+  assert.deepEqual(await buscarArticulos(relatoArriendo, { materia: "familia" }), []);
+  assert.ok((await buscarArticulos(relatoArriendo, { materia: "arriendo" })).length > 0);
+  assert.deepEqual(await buscarArticulos(relatoArriendo, { materia: "otra" }), []);
+  assert.deepEqual(
+    await buscarArticulos(
+      "Tengo un problema con un contrato y no sé qué área legal corresponde; necesito conocer mis opciones.",
+      { materia: "otra" },
+    ),
+    [],
+  );
+
+  await eliminarNorma(familia.normaId);
+  await eliminarNorma(arriendo.normaId);
 });
 
 test("lee un PDF real y lo separa por artículo", async () => {
@@ -313,7 +356,7 @@ test("biblioteca: la revisión reemplaza solo lo que cambió de versión y anota
 });
 
 test("LeyChile: lee el XML por artículo, omite derogados y reconoce el número", async () => {
-  const { parsearNorma, idNormaDesde, urlNormaLeyChile } = await import("../lib/leychile");
+  const { parsearNorma, idNormaDesde, urlNormaLeyChile, NORMAS_HABITUALES } = await import("../lib/leychile");
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Norma xmlns="http://www.leychile.cl/esquemas" normaId="999" fechaVersion="2026-07-23" derogado="no derogado">
  <Metadatos><TituloNorma>LEY DE PRUEBA</TituloNorma></Metadatos>
@@ -338,7 +381,16 @@ test("LeyChile: lee el XML por artículo, omite derogados y reconoce el número"
   assert.equal(idNormaDesde("https://www.bcn.cl/leychile/navegar?idNorma=207436&idVersion=2026"), "207436");
   assert.equal(idNormaDesde("https://www.bcn.cl/leychile/navegar?i=1181003"), "1181003");
   assert.equal(idNormaDesde("https://malo.example.com/?idNorma=1"), null);
+  assert.equal(idNormaDesde("https://evilbcn.cl/leychile/navegar?idNorma=1"), null);
   assert.equal(urlNormaLeyChile("207436"), "https://www.bcn.cl/leychile/navegar?idNorma=207436");
+  assert.equal(
+    urlNormaLeyChile(NORMAS_HABITUALES.find((n) => n.nombre === "Código Penal")?.id ?? ""),
+    "https://www.bcn.cl/leychile/navegar?idNorma=1984",
+  );
+  assert.equal(
+    urlNormaLeyChile("172986", "8720734"),
+    "https://www.bcn.cl/leychile/navegar?idNorma=172986&idParte=8720734",
+  );
   assert.equal(urlNormaLeyChile(""), null);
   assert.equal(urlNormaLeyChile("207436&next=example"), null);
   assert.throws(() => parsearNorma("<otra/>"));

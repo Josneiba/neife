@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { consultarNormas, type Contexto, type NormaSugerida } from "@/lib/acciones/orientacion";
 import { GUIA_RELATO, MATERIAS, REGIONES, type MateriaClave } from "@/lib/materias";
 import { BarraIndeterminada, FormSolicitud } from "./formularios";
@@ -8,6 +9,8 @@ import { Icono } from "./Iconos";
 
 type Props = {
   asesores: { id: number; nombre: string }[];
+  puedeSolicitar: boolean;
+  motivoSolicitud: string;
   asesorInicial?: number;
   materiaInicial?: string;
   nombre?: string;
@@ -136,7 +139,7 @@ export function FlujoOrientacion(props: Props) {
 
           <h3 className="res-t">Normas que podrían favorecerte</h3>
           {normas.length === 0 ? (
-            <p>{sinBase ? `Para esta materia aún no tenemos cargada la norma principal (${pendientes.join(", ")}). Preferimos no mostrarte resultados parciales que podrían orientarte mal. Un asesor puede revisar tu caso igual.` : "No hay normas en la biblioteca para este relato. Un asesor puede revisarlo igual."}</p>
+            <p>{sinBase ? `Para esta materia aún no tenemos cargada la norma principal (${pendientes.join(", ")}). Preferimos no mostrarte resultados parciales que podrían orientarte mal. Un asesor puede revisar tu caso igual.` : materia === "otra" ? "Para evitar sugerirte normas de otra área, elige la materia que más se acerque a tu caso y vuelve a consultar." : "No hay normas en la biblioteca para este relato. Un asesor puede revisarlo igual."}</p>
           ) : (
             <ul className="normas-lista">
               {(verTodas ? normas : normas.slice(0, 3)).map((n) => (
@@ -187,16 +190,36 @@ export function FlujoOrientacion(props: Props) {
             Orientación general, no es asesoría jurídica ni reemplaza a un abogado. Los plazos y la vigencia de cada norma deben verificarse.
           </p>
 
+          <section className="llamada-asesoria" aria-labelledby="t-buscar-asesoria">
+            <div>
+              <h3 id="t-buscar-asesoria">¿Necesitas aplicar estas normas a tu situación?</h3>
+              <p>Un profesional puede revisar tus antecedentes, plazos y próximos pasos. La orientación de esta página es solo un punto de partida.</p>
+            </div>
+            {props.puedeSolicitar ? (
+              <a href="#solicitud" className="btn btn-primario">Buscar asesoría legal</a>
+            ) : (
+              <Link href="/asesoria" className="btn btn-primario">Buscar asesoría legal</Link>
+            )}
+          </section>
+
           <div id="solicitud" style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--borde)", scrollMarginTop: 12 }}>
             <h2 style={{ fontSize: "1.375rem" }}>¿Quieres ayuda de un abogado?</h2>
-            <p style={{ marginTop: 8 }}>
-              Deja tus datos. Un asesor revisa tu caso, prepara un informe y te conecta con un abogado de esta materia.
-            </p>
-            <FormSolicitud {...props} fijo={{ materia, region, relato: relato.trim() }} />
+            {props.puedeSolicitar ? (
+              <>
+                <p style={{ marginTop: 8 }}>
+                  Deja tus datos. Un asesor revisa tu caso, prepara un informe y te conecta con un abogado de esta materia.
+                </p>
+                <FormSolicitud {...props} fijo={{ materia, region, relato: relato.trim() }} />
+              </>
+            ) : (
+              <p className="aviso aviso-espera" role="status" style={{ marginTop: 12 }}>
+                {props.motivoSolicitud}
+              </p>
+            )}
           </div>
         </section>
       ) : null}
-      {normas && !formVisible ? (
+      {normas && props.puedeSolicitar && !formVisible ? (
         <a href="#solicitud" className="cta-fija btn btn-primario">
           <Icono nombre="enviar" tam={17} /> Pedir ayuda de un abogado
         </a>

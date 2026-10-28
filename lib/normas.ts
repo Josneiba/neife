@@ -16,7 +16,7 @@ const stemmer = snowball.newStemmer("spanish");
 
 const STOPWORDS = new Set(
   (
-    "a al algo algun alguna algunas alguno algunos ante antes asi aun aunque bajo bien cada casi como con contra cual cuales cuando de del desde donde dos el ella ellas ello ellos en entre era eran es esa esas ese eso esos esta estaba estaban estan estar este esto estos fue fueron ha había habia han hasta hay la las le les lo los mas me mi mis mucho muy ni no nos nosotros nuestro o os otra otras otro otros para pero poco por porque que quien quienes se sea sean segun ser si sido sin sobre solo son su sus tambien tan tanto te tengo tiene tienen todo todos tu tus un una unas uno unos usted va ya yo estoy fui mi mis tuve tuvo hice hizo hecho dijo dice dicen"
+    "a al algo algun alguna algunas alguno algunos ante antes asi aun aunque bajo bien cada casi como con contra cual cuales cuando de del desde donde dos el ella ellas ello ellos en entre era eran es esa esas ese eso esos esta estaba estaban estan estar este esto estos fue fueron ha había habia han hasta hay la las le les lo los mas me mi mis mucho muy ni no nos nosotros nuestro o os otra otras otro otros para pero poco por porque que quien quienes se sea sean segun ser si sido sin sobre solo son su sus tambien tan tanto te tengo tiene tienen todo todos tu tus un una unas uno unos usted va ya yo estoy fui mi mis tuve tuvo hice hizo hecho dijo dice dicen legal legales debe deben deber debera deberan puede pueden poder podra podran"
   ).split(" "),
 );
 
@@ -268,6 +268,7 @@ import { VOCABULARIO, CABECERA } from "./vocabulario";
 
 type ReglaVocab = { si: Set<string>; agrega: string[]; materia?: string };
 let reglas: ReglaVocab[] | null = null;
+
 function reglasVocab(): ReglaVocab[] {
   if (!reglas) reglas = VOCABULARIO.map((r) => ({ si: new Set(raices(r.si, false)), agrega: raices(r.agrega), materia: r.materia }));
   return reglas;
@@ -303,8 +304,10 @@ export async function buscarArticulos(
   consulta: string,
   opciones: { materia?: string; limite?: number } = {},
 ): Promise<Resultado[]> {
-  const filtraMateria = Boolean(opciones.materia && opciones.materia !== "otra");
-  const pesos = terminosConsulta(consulta, filtraMateria ? opciones.materia : undefined);
+  if (opciones.materia === "otra") return [];
+  const materiaBusqueda = opciones.materia;
+  const filtraMateria = Boolean(materiaBusqueda);
+  const pesos = terminosConsulta(consulta, materiaBusqueda);
   const terminos = [...pesos.keys()].slice(0, 40);
   if (terminos.length === 0) return [];
   const limite = Math.min(Math.max(opciones.limite ?? 8, 1), 30);
@@ -338,7 +341,8 @@ export async function buscarArticulos(
   });
   const avg = docs.reduce((a, x) => a + x.len, 0) / docs.length || 1;
   const k1 = 1.4, b = 0.6;
-  const propias = terminos.filter((t) => pesos.get(t) === 1).length || 1;
+  const propias = terminos.filter((t) => pesos.get(t) === 1).length;
+  const coberturaMinima = Math.min(2, propias || 1);
 
   const puntuados = docs.map(({ f, tf, len }) => {
     let s = 0, cubiertas = 0;
@@ -351,7 +355,7 @@ export async function buscarArticulos(
     }
     // Los códigos y la Constitución son la regla general; las leyes que los modifican, más acotadas, pesan un poco menos.
     const general = /^(Código|Constitución)/.test(String(f.norma)) ? 1.0 : 1;
-    return { f, s: s * general * (0.6 + 0.8 * (cubiertas / propias)) };
+    return { f, cubiertas, s: s * general * (0.6 + 0.8 * (cubiertas / propias)) };
   });
   puntuados.sort((p, q) => q.s - p.s || Number(p.f.id) - Number(q.f.id));
 
@@ -372,7 +376,8 @@ export async function buscarArticulos(
     fuente: String(f.fuente ?? ""),
     version: String(f.version ?? ""),
   });
-  for (const { f } of puntuados) {
+  for (const { f, cubiertas } of puntuados) {
+    if (cubiertas < coberturaMinima) continue;
     if (esModificatorio(String(f.texto))) continue;
     const clave = String(f.texto).slice(0, 160);
     if (vistos.has(clave)) continue;
@@ -392,7 +397,7 @@ export async function buscarArticulos(
   const raicesConsulta = new Set(raices(consulta, false));
   const cabeceras: [string, string][] = [];
   for (const c of CABECERA) {
-    if (c.materia && opciones.materia && c.materia !== opciones.materia) continue;
+    if (c.materia && materiaBusqueda && c.materia !== materiaBusqueda) continue;
     if (!raices(c.si, false).some((t) => raicesConsulta.has(t))) continue;
     cabeceras.push(...c.arts);
   }

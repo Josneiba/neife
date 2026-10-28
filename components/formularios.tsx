@@ -631,7 +631,7 @@ export function FormImportarLey({ habituales }: { habituales: { id: string; nomb
     <form onSubmit={onSubmit} className="formulario formulario-panel" noValidate>
       <Mensajes estado={estado} />
       <div className="fila-dos">
-        <Campo id="entrada" label="Número de norma o enlace de LeyChile" error={e.entrada} ayuda="Está en la dirección: leychile.cl/Navegar?idNorma=207436">
+        <Campo id="entrada" label="Número de norma o enlace de LeyChile" error={e.entrada} ayuda="Puedes importar cualquier norma publicada en LeyChile con su idNorma; verifica el título y la materia antes de cargarla.">
           <input id="entrada" name="entrada" className="entrada" value={entrada} onChange={(ev) => setEntrada(ev.target.value)} inputMode="url" {...descripcion("entrada", "x", e.entrada)} />
         </Campo>
         <Campo id="materia-ley" label="Materia" error={e.materia}>

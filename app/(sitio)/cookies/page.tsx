@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PreferenciasCookies } from "@/components/AvisoCookies";
 
 export const metadata: Metadata = { title: "Política de cookies" };
 
@@ -40,10 +41,12 @@ export default function Cookies() {
 
         <h2>Almacenamiento del navegador y preferencias</h2>
         <p>
-          No se guarda una preferencia de cookies: las cookies descritas son necesarias para prestar las funciones que solicitas.
-          Si en el futuro se añaden cookies no esenciales, se actualizará este inventario y se solicitará el consentimiento que
-          corresponda antes de activarlas.
+          Tu elección se guarda en el almacenamiento local del navegador (no es una cookie ni se usa para seguimiento).
+          Actualmente no hay cookies opcionales activas; las necesarias continúan funcionando para prestar las funciones que
+          solicitas. Si en el futuro se añaden cookies opcionales, se actualizará este inventario y se solicitará el
+          consentimiento que corresponda antes de activarlas.
         </p>
+        <PreferenciasCookies />
 
         <h2>Cómo gestionar cookies</h2>
         <p>

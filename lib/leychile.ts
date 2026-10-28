@@ -14,14 +14,37 @@ const MAX_BYTES = 40 * 1024 * 1024;
 /** Normas habituales cuyo número de norma se comprobó contra el sitio oficial. */
 export const NORMAS_HABITUALES: { id: string; nombre: string; materia: string }[] = [
   { id: "207436", nombre: "Código del Trabajo", materia: "laboral" },
+  { id: "1984", nombre: "Código Penal", materia: "penal" },
+  { id: "176595", nombre: "Código Procesal Penal", materia: "penal" },
+  { id: "22740", nombre: "Código de Procedimiento Civil", materia: "civil" },
+  { id: "29526", nombre: "Ley 18.101, arrendamiento de predios urbanos", materia: "arriendo" },
   { id: "61438", nombre: "Ley 19.496, protección de los derechos de los consumidores", materia: "consumidor" },
   { id: "229557", nombre: "Ley 19.968, crea los Tribunales de Familia", materia: "familia" },
+  { id: "225128", nombre: "Ley 19.947, matrimonio civil", materia: "familia" },
+  { id: "242648", nombre: "Ley 20.066, violencia intrafamiliar", materia: "familia" },
+  { id: "141599", nombre: "Ley 19.628, sobre protección de la vida privada", materia: "otra" },
+  { id: "1209272", nombre: "Ley 21.719, protección y tratamiento de datos personales", materia: "otra" },
   { id: "1181003", nombre: "Responsabilidad parental y pago efectivo de deudas de pensiones de alimentos", materia: "familia" },
   { id: "172986", nombre: "Código Civil", materia: "civil" },
 ];
 
-export function urlNormaLeyChile(idNorma: string): string | null {
-  return /^\d{1,9}$/.test(idNorma) ? `https://www.bcn.cl/leychile/navegar?idNorma=${idNorma}` : null;
+const FUENTES_LEGALES_VERIFICADAS: { id: string; nombre: string; materia: string; parte?: string }[] = [
+  ...NORMAS_HABITUALES,
+  {
+    id: "172986",
+    parte: "8720734",
+    nombre: "Ley 14.908, abandono de familia y pago de pensiones alimenticias",
+    materia: "familia",
+  },
+];
+
+export function urlNormaLeyChile(idNorma: string, idParte?: string): string | null {
+  if (!/^\d{1,9}$/.test(idNorma) || (idParte !== undefined && !/^\d{1,9}$/.test(idParte))) return null;
+  return `https://www.bcn.cl/leychile/navegar?idNorma=${idNorma}${idParte ? `&idParte=${idParte}` : ""}`;
+}
+
+export function fuenteVerificadaPorNombre(nombre: string) {
+  return FUENTES_LEGALES_VERIFICADAS.find((norma) => norma.nombre === nombre);
 }
 
 /** Acepta el número solo o una dirección de leychile.cl y devuelve el número de norma. */
@@ -30,7 +53,9 @@ export function idNormaDesde(entrada: string): string | null {
   if (/^\d{1,9}$/.test(t)) return t;
   try {
     const u = new URL(t);
-    if (!u.hostname.endsWith("leychile.cl") && !u.hostname.endsWith("bcn.cl")) return null;
+    const host = u.hostname.toLowerCase();
+    const oficial = ["leychile.cl", "bcn.cl"].some((dominio) => host === dominio || host.endsWith(`.${dominio}`));
+    if (!oficial) return null;
     const id = u.searchParams.get("idNorma") ?? u.searchParams.get("i");
     return id && /^\d{1,9}$/.test(id) ? id : null;
   } catch {

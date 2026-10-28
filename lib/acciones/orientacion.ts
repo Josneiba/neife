@@ -7,7 +7,7 @@ import { permitir } from "../ratelimit";
 import { esMateria, PLANTILLAS } from "../materias";
 import { buscarArticulos } from "../normas";
 import { esencialesFaltantes, normasFaltantes } from "../fuentes";
-import { urlNormaLeyChile } from "../leychile";
+import { fuenteVerificadaPorNombre, urlNormaLeyChile } from "../leychile";
 
 export type NormaSugerida = { id: number; norma: string; numero: string; texto: string; fuente: string; enlace: string | null };
 export type Contexto = { derechos: string[]; vias: string; plazos: string };
@@ -30,8 +30,7 @@ async function consultarNormasInterna(materia: string, relato: string): Promise<
   // Si falta la norma principal de la materia, no se muestran resultados parciales: darían una guía incorrecta.
   const esenciales = await esencialesFaltantes(materia);
   const sinBase = esenciales.length > 0;
-  let encontrados = sinBase ? [] : await buscarArticulos(texto, { materia, limite: 6 });
-  if (encontrados.length === 0 && !sinBase) encontrados = await buscarArticulos(texto, { limite: 6 });
+  const encontrados = sinBase ? [] : await buscarArticulos(texto, { materia, limite: 6 });
   // Solo se anota la materia y cuántas normas se encontraron (nunca el relato): sirve para saber qué leyes faltan.
   getDb()
     .then((d) => d.execute({ sql: "INSERT INTO consultas_log (materia, resultados) VALUES (?, ?)", args: [materia, encontrados.length] }))
@@ -41,14 +40,19 @@ async function consultarNormasInterna(materia: string, relato: string): Promise<
     pendientes: sinBase ? esenciales : await normasFaltantes(materia),
     sinBase,
     contexto: { derechos: PLANTILLAS[materia].derechos, vias: PLANTILLAS[materia].vias, plazos: PLANTILLAS[materia].plazos },
-    normas: encontrados.map((a) => ({
-      id: a.id,
-      norma: a.norma,
-      numero: a.numero,
-      texto: a.texto.slice(0, 1200),
-      fuente: a.bcnId ? `BCN Ley Chile${a.version ? `, versión del ${a.version}` : ""}` : a.fuente || "Fuente no verificada",
-      enlace: urlNormaLeyChile(a.bcnId),
-    })),
+    normas: encontrados.map((a) => {
+      const fuenteConocida = fuenteVerificadaPorNombre(a.norma);
+      const bcnId = a.bcnId || fuenteConocida?.id || "";
+      const enlace = urlNormaLeyChile(bcnId, !a.bcnId ? fuenteConocida?.parte : undefined);
+      return {
+        id: a.id,
+        norma: a.norma,
+        numero: a.numero,
+        texto: a.texto.slice(0, 1200),
+        fuente: enlace ? `BCN Ley Chile${a.bcnId && a.version ? `, versión del ${a.version}` : ""}` : "No encontramos una fuente oficial verificable para esta norma.",
+        enlace,
+      };
+    }),
   };
 }
 

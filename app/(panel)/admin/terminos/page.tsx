@@ -23,7 +23,7 @@ export default async function AdminTerminos() {
       </header>
       <div className="aviso aviso-espera" style={{ margin: "0 0 20px" }}>
         Completa la identificación legal del responsable y el correo de contacto. Revisa el texto con un abogado antes de
-        publicarlo. El contenido se guarda como texto plano; los campos entre corchetes dobles impiden publicar.
+        publicarlo. El contenido se guarda como texto plano; los campos pendientes entre corchetes impiden publicar.
       </div>
       <EditorTerminos contenido={documento.contenido} />
     </>
