@@ -57,6 +57,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           raiz="/panel"
           enlaces={[
             { href: "/panel", texto: "Casos", icono: "casos", contador: conteo.nueva ?? 0 },
+            { href: "/panel/crm", texto: "CRM", icono: "usuarios" },
             { href: "/panel/informes", texto: "Informes", icono: "informe" },
             { href: "/panel/biblioteca", texto: "Biblioteca", icono: "libro" },
             { href: "/panel/perfil", texto: "Mi perfil", icono: "usuario" },

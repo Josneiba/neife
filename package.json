@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "cambiar-clave": "tsx scripts/cambiar-clave.ts",
     "limpiar": "tsx scripts/limpiar.ts",
-    "biblioteca": "tsx scripts/biblioteca.ts"
+    "biblioteca": "tsx scripts/biblioteca.ts",
+    "demo:crm": "tsx scripts/demo-crm.ts"
   },
   "engines": {
     "node": ">=20.19 <25"
