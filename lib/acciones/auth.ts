@@ -7,6 +7,7 @@ import { cerrarSesionActual, hashClave, iniciarSesion, verificarClave } from "..
 import { ipActual, rutaSegura } from "../guards";
 import { permitir, reiniciar } from "../ratelimit";
 import { slugLibre } from "../datos";
+import { enviarVerificacionCorreo } from "../verificacion-correo";
 import {
   datosDeForm,
   erroresPorCampo,
@@ -31,13 +32,16 @@ async function ingresarInterna(_prev: EstadoForm, fd: FormData): Promise<EstadoF
 
   const d = await getDb();
   const r = await d.execute({
-    sql: "SELECT id, password_hash, rol FROM usuarios WHERE email = ?",
+    sql: "SELECT id, password_hash, rol, email_verificado FROM usuarios WHERE email = ?",
     args: [parsed.data.email],
   });
   const fila = r.rows[0];
   const ok = await verificarClave(parsed.data.clave, fila ? String(fila.password_hash) : null);
   if (!fila || !ok) {
     return { error: "Correo o contraseña incorrectos.", valores: { email: datos.email ?? "" } };
+  }
+  if (fila && Number(fila.email_verificado) !== 1) {
+    return { error: "Confirma tu correo antes de ingresar. Si no encuentras el enlace, solicita otro desde el acceso por código.", valores: { email: datos.email ?? "" } };
   }
 
   await reiniciar(claveLimite);
@@ -59,18 +63,28 @@ async function registrarClienteInterna(_prev: EstadoForm, fd: FormData): Promise
   if (!(await permitir(`registro:${ip}`, 12, 60 * 60 * 1000))) return { error: MENSAJE_LIMITE, valores };
 
   const d = await getDb();
-  const existe = await d.execute({ sql: "SELECT 1 FROM usuarios WHERE email = ?", args: [parsed.data.email] });
-  if (existe.rows.length) return { errores: { email: "Ese correo ya tiene una cuenta. Ingresa con él." }, valores };
+  const existe = await d.execute({ sql: "SELECT id, email_verificado FROM usuarios WHERE email = ?", args: [parsed.data.email] });
+  if (existe.rows.length) {
+    if (Number(existe.rows[0].email_verificado) !== 1) {
+      if (!(await enviarVerificacionCorreo(Number(existe.rows[0].id), parsed.data.email))) {
+        return { error: "La cuenta ya existe, pero no pudimos enviar el enlace. Intenta de nuevo desde el acceso por código.", valores };
+      }
+      redirect("/registro/verifica-correo");
+    }
+    return { errores: { email: "Ese correo ya tiene una cuenta. Ingresa con él." }, valores };
+  }
 
   const hash = await hashClave(parsed.data.clave);
   const r = await d.execute({
-    sql: "INSERT INTO usuarios (email, password_hash, rol, nombre, estado) VALUES (?, ?, 'cliente', ?, 'activo')",
+    sql: "INSERT INTO usuarios (email, password_hash, rol, nombre, estado, email_verificado) VALUES (?, ?, 'cliente', ?, 'activo', 0)",
     args: [parsed.data.email, hash, parsed.data.nombre],
   });
   const id = Number(r.lastInsertRowid);
-  await iniciarSesion(id);
   await auditar(id, "registro_cliente", "usuario", id);
-  redirect("/cuenta");
+  if (!(await enviarVerificacionCorreo(id, parsed.data.email))) {
+    return { error: "Creamos tu cuenta, pero no pudimos enviar el enlace de verificación. Solicita otro desde el acceso por código.", valores };
+  }
+  redirect("/registro/verifica-correo");
 }
 
 async function registrarAbogadoInterna(_prev: EstadoForm, fd: FormData): Promise<EstadoForm> {
@@ -88,13 +102,21 @@ async function registrarAbogadoInterna(_prev: EstadoForm, fd: FormData): Promise
   if (!(await permitir(`registro:${ip}`, 12, 60 * 60 * 1000))) return { error: MENSAJE_LIMITE, valores };
 
   const d = await getDb();
-  const existe = await d.execute({ sql: "SELECT 1 FROM usuarios WHERE email = ?", args: [parsed.data.email] });
-  if (existe.rows.length) return { errores: { email: "Ese correo ya tiene una cuenta. Ingresa con él." }, valores };
+  const existe = await d.execute({ sql: "SELECT id, email_verificado FROM usuarios WHERE email = ?", args: [parsed.data.email] });
+  if (existe.rows.length) {
+    if (Number(existe.rows[0].email_verificado) !== 1) {
+      if (!(await enviarVerificacionCorreo(Number(existe.rows[0].id), parsed.data.email))) {
+        return { error: "La cuenta ya existe, pero no pudimos enviar el enlace. Intenta de nuevo desde el acceso por código.", valores };
+      }
+      redirect("/registro/verifica-correo");
+    }
+    return { errores: { email: "Ese correo ya tiene una cuenta. Ingresa con él." }, valores };
+  }
 
   const hash = await hashClave(parsed.data.clave);
   const slug = await slugLibre(parsed.data.nombre);
   const r = await d.execute({
-    sql: "INSERT INTO usuarios (email, password_hash, rol, nombre, estado) VALUES (?, ?, 'abogado', ?, 'pendiente')",
+    sql: "INSERT INTO usuarios (email, password_hash, rol, nombre, estado, email_verificado) VALUES (?, ?, 'abogado', ?, 'pendiente', 0)",
     args: [parsed.data.email, hash, parsed.data.nombre],
   });
   const id = Number(r.lastInsertRowid);
@@ -102,9 +124,11 @@ async function registrarAbogadoInterna(_prev: EstadoForm, fd: FormData): Promise
     sql: "INSERT INTO perfiles (usuario_id, slug, titulo, registro, publicado) VALUES (?, ?, ?, ?, 1)",
     args: [id, slug, parsed.data.titulo, parsed.data.registro],
   });
-  await iniciarSesion(id);
   await auditar(id, "registro_abogado", "usuario", id);
-  redirect("/panel");
+  if (!(await enviarVerificacionCorreo(id, parsed.data.email))) {
+    return { error: "Creamos tu cuenta, pero no pudimos enviar el enlace de verificación. Solicita otro desde el acceso por código.", valores };
+  }
+  redirect("/registro/verifica-correo");
 }
 
 export async function salir() {

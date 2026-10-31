@@ -14,6 +14,7 @@ model Usuarios {
   rol                 String
   nombre              String
   estado              String        @default("activo")
+  email_verificado    Int           @default(1)
   creado_en           String        @default(dbgenerated("ahora()"))
   perfil              Perfiles?
   solicitudes_asesor  Solicitudes[] @relation("SolicitudAsesor")

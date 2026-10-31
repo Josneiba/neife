@@ -25,24 +25,30 @@ export default async function Registro({
         ¿Ya tienes una? <Link href="/ingresar">Ingresa</Link>.
       </p>
 
-      <nav className="conmutador" aria-label="Tipo de cuenta" style={{ marginTop: 24 }}>
+      <p className="ayuda" style={{ marginTop: 24 }}>Elige la opción según cómo usarás Neife:</p>
+      <nav className="conmutador" aria-label="Tipo de cuenta" style={{ marginTop: 12 }}>
         <Link href="/registro" aria-current={tipo === "cliente" ? "true" : undefined}>
-          Necesito asesoría
+          Cliente · Busco asesoría
         </Link>
         <Link href="/registro?tipo=asesor" aria-current={tipo === "asesor" ? "true" : undefined}>
-          Soy abogado o asesor
+          Abogado o asesor · Ofrezco asesoría
         </Link>
       </nav>
 
       {tipo === "cliente" ? (
         <>
           <p className="ayuda" style={{ marginTop: 16 }}>
-            La cuenta es opcional: te sirve para ver tus solicitudes en un solo lugar. Puedes pedir asesoría sin crearla.
+            Para pedir asesoría y consultar tus solicitudes. La cuenta es opcional: también puedes pedir asesoría sin crearla.
           </p>
           <FormRegistroCliente />
         </>
       ) : (
-        <FormRegistroAbogado />
+        <>
+          <p className="ayuda" style={{ marginTop: 16 }}>
+            Para ofrecer asesoría y gestionar tu perfil profesional. Revisaremos tus datos antes de publicar tu perfil.
+          </p>
+          <FormRegistroAbogado />
+        </>
       )}
     </div>
   );

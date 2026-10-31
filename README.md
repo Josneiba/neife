@@ -135,8 +135,10 @@ Neife Asesoría es **orientación general**. Quien la preste debe presentarse co
 
 ## Contactos rápidos, correos y recuperación (última ronda)
 
+- **Cuentas**: al registrarse se elige entre cliente (pedir y consultar asesorías) o abogado/asesor (gestionar un perfil profesional, sujeto a revisión). La cuenta se activa al confirmar el correo.
+- **Ingreso sin contraseña**: `/ingresar/codigo` envía un código de un solo uso, válido por 10 minutos; si la cuenta aún no confirmó su correo, envía un enlace de confirmación. Los códigos tienen límite de intentos y no se guardan en texto plano.
 - **Nuevo contacto** en `/panel`: nombre + teléfono o correo + materia, Enter y listo (menos de un segundo en pruebas). Queda «En contacto», con antecedentes típicos y seguimiento para mañana. «Origen y nota» es opcional.
-- **Correos (Resend)**: aviso al asesor por cada solicitud nueva, confirmación a la persona con su enlace de seguimiento, recuperación de contraseña y un resumen diario (lunes a viernes, vía Vercel Cron) con cantidades, sin nombres ni relatos. Sin `RESEND_API_KEY` se imprimen en la consola.
+- **Correos (Resend)**: aviso al asesor por cada solicitud nueva, confirmación a la persona con su enlace de seguimiento, verificación de cuenta, código de ingreso, recuperación de contraseña y un resumen diario (lunes a viernes, vía Vercel Cron) con cantidades, sin nombres ni relatos. Sin `RESEND_API_KEY`, los códigos y enlaces de acceso no se imprimen en la consola.
 - **Recuperar contraseña**: `/recuperar` envía un enlace de un solo uso que vale 1 hora (en la base solo se guarda su huella). Responde igual exista o no la cuenta.
 - **Ingreso con Google** (opcional, aparece solo si configuras `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`): OAuth con PKCE. Solo se une a una cuenta existente si Google confirma el correo. Quien entra por primera vez queda como persona (no como asesor).
 - **Cargas y errores**: barra fina al cambiar de página, pantallas de carga y barras en búsquedas y subidas; los errores técnicos se traducen a frases claras (sin conexión, enlace vencido, archivo muy pesado…) y las pantallas de falla muestran un código para soporte.

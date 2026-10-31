@@ -772,6 +772,16 @@ textarea.entrada {
 .conmutador a:not([aria-current="true"]):hover {
   background: var(--crema-claro);
 }
+@media (max-width: 520px) {
+  .conmutador {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .conmutador a {
+    text-align: center;
+  }
+}
 
 .pagina-estrecha {
   padding-top: 56px;

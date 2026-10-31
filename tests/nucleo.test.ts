@@ -17,8 +17,10 @@ before(async () => {
   await c.query('CREATE TABLE "_prisma_migrations" (migration_name TEXT NOT NULL, finished_at TIMESTAMPTZ, rolled_back_at TIMESTAMPTZ)');
   await c.query(readFileSync("prisma/migrations/0_baseline/migration.sql", "utf8"));
   await c.query(readFileSync("prisma/migrations/20261027000000_registro_version_terminos/migration.sql", "utf8"));
+  await c.query(readFileSync("prisma/migrations/20261030000000_verificacion_email/migration.sql", "utf8"));
   await c.query('INSERT INTO "_prisma_migrations" (migration_name, finished_at) VALUES (\'0_baseline\', now())');
   await c.query('INSERT INTO "_prisma_migrations" (migration_name, finished_at) VALUES (\'20261027000000_registro_version_terminos\', now())');
+  await c.query('INSERT INTO "_prisma_migrations" (migration_name, finished_at) VALUES (\'20261030000000_verificacion_email\', now())');
   await c.end();
 });
 process.env.DATA_ENCRYPTION_KEY = randomBytes(32).toString("hex");
@@ -302,7 +304,7 @@ test("limpieza: rechaza plazos menores a un mes", async () => {
 
 test("tokens: valen una sola vez y vencen", async () => {
   const { getDb } = await import("../lib/db");
-  const { crearToken, tokenValido, gastarToken } = await import("../lib/tokens");
+  const { crearCodigoIngreso, crearToken, gastarCodigoIngreso, tokenValido, gastarToken } = await import("../lib/tokens");
   const d = await getDb();
   const u = await d.execute({ sql: "INSERT INTO usuarios (email, password_hash, rol, nombre) VALUES (?, 'x', 'cliente', 'T')", args: ["tok@mail.test"] });
   const id = Number(u.lastInsertRowid);
@@ -313,6 +315,16 @@ test("tokens: valen una sola vez y vencen", async () => {
   assert.equal(await gastarToken(t, "recuperar"), null, "segundo uso rechazado");
   const vencido = await crearToken(id, "recuperar", -1);
   assert.equal(await tokenValido(vencido, "recuperar"), null);
+  const codigo = await crearCodigoIngreso(id, "tok@mail.test");
+  assert.match(codigo, /^\d{6}$/);
+  assert.equal(await gastarCodigoIngreso(codigo, "otro@mail.test"), null, "el código queda ligado al correo");
+  assert.equal(await gastarCodigoIngreso(codigo, "tok@mail.test"), id);
+  assert.equal(await gastarCodigoIngreso(codigo, "tok@mail.test"), null, "el código solo se usa una vez");
+  const anterior = await crearCodigoIngreso(id, "tok@mail.test");
+  await crearCodigoIngreso(id, "tok@mail.test");
+  assert.equal(await gastarCodigoIngreso(anterior, "tok@mail.test"), null, "un código nuevo invalida el anterior");
+  const codigoVencido = await crearCodigoIngreso(id, "tok@mail.test", -1);
+  assert.equal(await gastarCodigoIngreso(codigoVencido, "tok@mail.test"), null, "el código vencido no se acepta");
 });
 
 test("errores: traduce fallas técnicas a frases claras", async () => {

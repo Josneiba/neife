@@ -3,7 +3,7 @@ import { urlSitio } from "./sitio";
 
 /**
  * Envío de correos con Resend.
- * Sin RESEND_API_KEY (en tu computador) el correo se muestra en la consola en vez de enviarse.
+ * Sin RESEND_API_KEY los correos de prueba se muestran en consola; códigos y enlaces de acceso se ocultan.
  * Los correos no llevan el relato del caso: solo avisan y traen un enlace.
  */
 
@@ -13,10 +13,11 @@ function remitente(): string {
   return process.env.EMAIL_FROM || `${NOMBRE} <onboarding@resend.dev>`;
 }
 
-export async function enviarCorreo(p: { para: string; asunto: string; texto: string; html?: string }): Promise<boolean> {
+export async function enviarCorreo(p: { para: string; asunto: string; texto: string; html?: string; sensible?: boolean }): Promise<boolean> {
   const clave = process.env.RESEND_API_KEY;
   if (!clave) {
-    console.log(`\n[correo no enviado: falta RESEND_API_KEY]\nPara: ${p.para}\nAsunto: ${p.asunto}\n${p.texto}\n`);
+    const detalle = p.sensible ? "" : `\n${p.texto}`;
+    console.log(`\n[correo no enviado: falta RESEND_API_KEY]\nPara: ${p.para}\nAsunto: ${p.asunto}${detalle}\n`);
     return false;
   }
   try {
@@ -58,11 +59,28 @@ function plantilla(asunto: string, texto: string): string {
 }
 
 export const correos = {
+  verificarCorreo(para: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Confirma tu correo para activar tu cuenta",
+      texto: `Para terminar de crear tu cuenta de Neife, confirma tu correo con este enlace:\n${enlace}\n\nSi no creaste esta cuenta, ignora este mensaje.`,
+      sensible: true,
+    });
+  },
+  codigoIngreso(para: string, codigo: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Tu código para ingresar a Neife",
+      texto: `Usa este código para ingresar: ${codigo}\n\nVence en 10 minutos y solo se puede usar una vez. Si no pediste este código, ignora este mensaje.`,
+      sensible: true,
+    });
+  },
   recuperar(para: string, enlace: string) {
     return enviarCorreo({
       para,
       asunto: "Recupera tu contraseña",
       texto: `Pediste cambiar tu contraseña.\n\nUsa este enlace, vale por 1 hora:\n${enlace}\n\nSi no fuiste tú, ignora este correo: tu cuenta sigue igual.`,
+      sensible: true,
     });
   },
   nuevaSolicitud(para: string, materia: string, enlace: string) {

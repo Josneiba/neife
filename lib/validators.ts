@@ -28,6 +28,18 @@ export const esquemaLogin = z.object({
   clave: z.string().min(1, { error: "Escribe tu contraseña." }).max(200),
 });
 
+export const esquemaSolicitarCodigoIngreso = z.object({ email: correo });
+
+export const esquemaCodigoIngreso = z.object({
+  email: correo,
+  codigo: z.string().regex(/^\d{6}$/, { error: "Escribe el código de 6 dígitos." }),
+  siguiente: z.string().optional(),
+});
+
+export const esquemaVerificarCorreo = z.object({
+  token: z.string().min(20).max(100),
+});
+
 export const esquemaRegistroCliente = z.object({
   nombre: texto(2, 120, "tu nombre"),
   email: correo,

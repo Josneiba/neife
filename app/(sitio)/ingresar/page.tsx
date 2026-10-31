@@ -48,6 +48,13 @@ export default async function Ingresar({
         </>
       ) : null}
       <FormIngresar siguiente={siguiente || undefined} />
+      <p className="ayuda" style={{ marginTop: 16 }}>
+        ¿Olvidaste tu contraseña o quieres ingresar más rápido?{" "}
+        <Link href={`/ingresar/codigo${siguiente ? `?siguiente=${encodeURIComponent(siguiente)}` : ""}`}>
+          Ingresa con un código por correo
+        </Link>
+        .
+      </p>
       <p className="ayuda" style={{ marginTop: 20 }}>
         <Link href="/recuperar">Olvidé mi contraseña</Link>
       </p>

@@ -7,6 +7,7 @@ import { crearSolicitud } from "@/lib/acciones/solicitudes";
 import { guardarPerfil } from "@/lib/acciones/panel";
 import { pedirRecuperacion, restablecerClave } from "@/lib/acciones/recuperar";
 import { importarLeyChile } from "@/lib/acciones/admin";
+import { solicitarCodigoIngreso, validarCodigoIngreso, verificarCorreo } from "@/lib/acciones/acceso-email";
 import type { EstadoForm } from "@/lib/validators";
 import { MATERIAS, PRESUPUESTOS, REGIONES, URGENCIAS } from "@/lib/materias";
 import Link from "next/link";
@@ -155,6 +156,72 @@ export function FormIngresar({ siguiente }: { siguiente?: string }) {
       <Texto id="clave" label="Contraseña" tipo="password" estado={estado} autoComplete="current-password" />
       <div className="botones">
         <BotonEnviar pendiente={pendiente} enviando="Ingresando…">Ingresar</BotonEnviar>
+      </div>
+    </form>
+  );
+}
+
+export function FormCodigoIngreso({ siguiente }: { siguiente?: string }) {
+  const solicitud = useAccionForm(solicitarCodigoIngreso);
+  const validacion = useAccionForm(validarCodigoIngreso);
+  const codigoEnviado = Boolean(solicitud.estado.ok);
+  const email = solicitud.estado.valores?.email ?? "";
+  const destino = solicitud.estado.valores?.siguiente ?? siguiente ?? "";
+
+  if (codigoEnviado) {
+    return (
+      <div className="formulario">
+        <Mensajes estado={solicitud.estado} />
+        <p>Revisa tu correo y escribe el código de 6 dígitos. Si todavía no verificaste tu cuenta, busca el enlace de confirmación.</p>
+        <form onSubmit={validacion.onSubmit} noValidate>
+          <Mensajes estado={validacion.estado} />
+          <input type="hidden" name="email" value={email} />
+          {destino ? <input type="hidden" name="siguiente" value={destino} /> : null}
+          <Campo id="codigo" label="Código de acceso" error={validacion.estado.errores?.codigo}>
+            <input
+              id="codigo"
+              name="codigo"
+              type="text"
+              className="entrada"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+              aria-invalid={validacion.estado.errores?.codigo ? true : undefined}
+            />
+          </Campo>
+          <div className="botones">
+            <BotonEnviar pendiente={validacion.pendiente} enviando="Verificando…">Ingresar</BotonEnviar>
+          </div>
+        </form>
+        <p className="ayuda">
+          ¿No llegó? <Link href="/ingresar/codigo">Solicita otro código</Link>.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={solicitud.onSubmit} className="formulario" noValidate>
+      <Mensajes estado={solicitud.estado} />
+      {siguiente ? <input type="hidden" name="siguiente" value={siguiente} /> : null}
+      <Texto id="email" label="Correo de tu cuenta" tipo="email" estado={solicitud.estado} autoComplete="email" />
+      <div className="botones">
+        <BotonEnviar pendiente={solicitud.pendiente} enviando="Enviando…">Enviar código o enlace</BotonEnviar>
+      </div>
+    </form>
+  );
+}
+
+export function FormVerificarCorreo({ token }: { token: string }) {
+  const { estado, onSubmit, pendiente } = useAccionForm(verificarCorreo);
+  return (
+    <form onSubmit={onSubmit} className="formulario" noValidate>
+      <Mensajes estado={estado} />
+      <input type="hidden" name="token" value={token} />
+      <div className="botones">
+        <BotonEnviar pendiente={pendiente} enviando="Confirmando…">Confirmar correo y continuar</BotonEnviar>
       </div>
     </form>
   );

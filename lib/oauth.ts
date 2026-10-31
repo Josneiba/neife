@@ -97,6 +97,7 @@ export async function iniciarConGoogle(p: PerfilGoogle): Promise<{ id: number; r
       args: [p.sub, Number(fila.id)],
     });
   }
+  await d.execute({ sql: "UPDATE usuarios SET email_verificado = 1 WHERE id = ?", args: [Number(fila.id)] });
   if (String(fila.estado) === "rechazado") return null;
   await iniciarSesion(Number(fila.id));
   await auditar(Number(fila.id), "ingreso_google", "usuario", Number(fila.id));
