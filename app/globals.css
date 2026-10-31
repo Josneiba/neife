@@ -1483,10 +1483,7 @@ legend {
 /* ---------- Logo oficial (imagen) ---------- */
 .logo { line-height: 0; gap: 0; }
 .logo-img { display: block; height: 40px; width: auto; max-width: 100%; }
-.logo-placa { background: var(--crema-claro); border-radius: 10px; padding: 5px 9px; }
-.logo-placa .logo-img { height: 34px; }
 .lateral .logo { padding: 0; }
-.lateral .logo-placa { padding: 5px 9px; }
 @media (max-width: 720px) { .logo-img { height: 34px; } }
 
 /* Teléfono: solo íconos en los controles de navegación (con nombre accesible y título) */

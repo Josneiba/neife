@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="app">
       <aside className="lateral">
-        <Logo sobreOscuro href="/admin" />
+        <Logo href="/admin" />
         <NavLateral
           raiz="/admin"
           enlaces={[

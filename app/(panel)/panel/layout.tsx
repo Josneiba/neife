@@ -52,7 +52,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   return (
     <div className="app">
       <aside className="lateral">
-        <Logo sobreOscuro href="/panel" />
+        <Logo href="/panel" />
         <NavLateral
           raiz="/panel"
           enlaces={[

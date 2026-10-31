@@ -10,13 +10,10 @@ const BARRAS = [
   { ancho: 8, color: "#3B4848" },
 ];
 
-/**
- * Logo oficial de Neife (fondo transparente, proporción 2,2:1).
- * Sobre fondos oscuros va dentro de una placa crema, porque la bandeja del logo es pizarra.
- */
-export function Logo({ sobreOscuro = false, href = "/" }: { sobreOscuro?: boolean; href?: string }) {
+/** Logo oficial de Neife (fondo transparente, proporción 2,2:1). */
+export function Logo({ href = "/" }: { href?: string }) {
   return (
-    <Link href={href} className={`logo${sobreOscuro ? " logo-placa" : ""}`} aria-label="Neife, ir al inicio">
+    <Link href={href} className="logo" aria-label="Neife, ir al inicio">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logo-neife.png" alt="" width={720} height={324} className="logo-img" decoding="async" />
     </Link>
