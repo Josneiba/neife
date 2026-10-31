@@ -108,11 +108,11 @@ async function verificarCorreoInterna(_prev: EstadoForm, fd: FormData): Promise<
   redirect(rol === "admin" ? "/admin" : rol === "abogado" ? "/panel" : "/cuenta");
 }
 
-export const solicitarCodigoIngreso = (...a: Parameters<typeof solicitarCodigoInterna>) =>
+export const solicitarCodigoIngreso = async (...a: Parameters<typeof solicitarCodigoInterna>) =>
   segura(solicitarCodigoInterna, "enviar el código")(...a);
 
-export const validarCodigoIngreso = (...a: Parameters<typeof validarCodigoInterna>) =>
+export const validarCodigoIngreso = async (...a: Parameters<typeof validarCodigoInterna>) =>
   segura(validarCodigoInterna, "validar el código")(...a);
 
-export const verificarCorreo = (...a: Parameters<typeof verificarCorreoInterna>) =>
+export const verificarCorreo = async (...a: Parameters<typeof verificarCorreoInterna>) =>
   segura(verificarCorreoInterna, "verificar tu correo")(...a);

@@ -1,7 +1,7 @@
 # Publicar Neife (Vercel + Supabase + Resend)
 
 Todo esto se hace una sola vez. Tiempo estimado: 30 a 40 minutos.
-Neife requiere Node.js 20.19 o superior (Prisma 7).
+Neife requiere Node.js 20.19–24.x (Prisma 7). El límite superior evita que Vercel elija automáticamente una versión mayor no configurada.
 
 ## 1. Código en GitHub
 Sube la carpeta a un repositorio **privado**. `.env.local` no se sube (ya está en `.gitignore`).

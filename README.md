@@ -6,7 +6,7 @@ Hecho con Next.js, PostgreSQL, migraciones de esquema con Prisma, correo con Res
 
 ## Cómo partir (primera vez)
 
-Necesitas Node.js 20.19 o superior.
+Necesitas Node.js 20.19 o superior, hasta la versión 24.x.
 
 ```bash
 npm install
