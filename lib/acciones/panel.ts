@@ -23,6 +23,7 @@ import { esMateria, MATERIAS, PLANTILLAS } from "../materias";
 import { conMensaje } from "../errores";
 import { segura } from "../errores";
 import { datosDeForm, erroresPorCampo, esquemaContactoRapido, esquemaPerfil, type EstadoForm } from "../validators";
+import { importarSolicitudes } from "../crm/servicio";
 
 function entero(v: unknown): number {
   const n = Number(v);
@@ -63,6 +64,7 @@ export async function aceptarSolicitud(fd: FormData) {
   const s = await obtenerSolicitudAsesor(id, u.id);
   if (!s || s.estado !== "nueva") redirect("/panel");
   await cambiarEstado(id, u.id, "aceptada");
+  await importarSolicitudes(u.id, id);
   const plantilla = PLANTILLAS[esMateria(s.materia) ? s.materia : "otra"];
   await agregarPendientes(id, [...plantilla.datos, ...plantilla.documentos]);
   revalidatePath("/panel", "layout");

@@ -1,5 +1,5 @@
 import { getDb, auditar, type Fila } from "../db";
-import { cifrar, descifrarSeguro } from "../crypto";
+import { cifrar, codigoCaso, descifrarSeguro } from "../crypto";
 import {
   CLAVES_ETAPA,
   ETAPAS_ABIERTAS,
@@ -42,6 +42,7 @@ import {
 
 export type PersonaCrm = {
   id: number;
+  codigoSeguimiento: string;
   abogadoId: number;
   solicitudId: number | null;
   nombre: string;
@@ -61,17 +62,42 @@ export type PersonaCrm = {
   ultimaAsesoria: string;
   abogadoDestino: string;
   valorEstimado: number;
+  direccion: string;
+  lat: number | null;
+  lng: number | null;
+  disponibilidad: string;
+  referidoPor: string;
+  informeVisible: boolean;
+  satisfaccion: number;
+  satisfaccionNota: string;
   creadoEn: string;
   actualizadoEn: string;
 };
 
-function aPersona(f: Fila): PersonaCrm {
+/** «{"lat":-33.4,"lng":-70.6}» → coordenadas, o null si falta o está mal. */
+export function leerUbicacion(cifrado: string): { lat: number; lng: number } | null {
+  if (!cifrado) return null;
+  try {
+    const j = JSON.parse(descifrarSeguro(cifrado, "crm.ubicacion"));
+    const lat = Number(j.lat);
+    const lng = Number(j.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+  } catch {
+    /* ubicación ilegible: se trata como «sin ubicación» */
+  }
+  return null;
+}
+
+export function aPersona(f: Fila): PersonaCrm {
+  const ubi = leerUbicacion(String(f.ubicacion_enc ?? ""));
+  const dec = (col: string, ctx: string) => (f[col] ? descifrarSeguro(String(f[col]), ctx) : "");
   const tel = String(f.telefono_enc ?? "");
   const mail = String(f.email_enc ?? "");
   const nota = String(f.nota_enc ?? "");
   const dest = String(f.abogado_destino_enc ?? "");
   return {
     id: Number(f.id),
+    codigoSeguimiento: String(f.codigo_seguimiento),
     abogadoId: Number(f.abogado_id),
     solicitudId: f.solicitud_id == null ? null : Number(f.solicitud_id),
     nombre: descifrarSeguro(String(f.nombre_enc), "crm.nombre"),
@@ -91,6 +117,14 @@ function aPersona(f: Fila): PersonaCrm {
     ultimaAsesoria: String(f.ultima_asesoria),
     abogadoDestino: dest ? descifrarSeguro(dest, "crm.destino") : "",
     valorEstimado: Number(f.valor_estimado),
+    direccion: dec("direccion_enc", "crm.direccion"),
+    lat: ubi?.lat ?? null,
+    lng: ubi?.lng ?? null,
+    disponibilidad: dec("disponibilidad_enc", "crm.disponibilidad"),
+    referidoPor: dec("referido_por_enc", "crm.referido"),
+    informeVisible: Number(f.informe_visible ?? 1) === 1,
+    satisfaccion: Number(f.satisfaccion ?? 0),
+    satisfaccionNota: dec("satisfaccion_nota_enc", "crm.satisfaccion"),
     creadoEn: String(f.creado_en),
     actualizadoEn: String(f.actualizado_en),
   };
@@ -104,6 +138,7 @@ const NO_ENCONTRADO = "No encontramos a esa persona. Puede que ya no exista.";
 
 export type NuevaPersona = {
   nombre: string;
+  codigoSeguimiento?: string;
   telefono?: string;
   email?: string;
   nota?: string;
@@ -115,7 +150,18 @@ export type NuevaPersona = {
   etapa?: EtapaCrm;
   proximoContacto?: string;
   solicitudId?: number | null;
+  direccion?: string;
+  lat?: number | null;
+  lng?: number | null;
+  referidoPor?: string;
 };
+
+/** Cifra la ubicación redondeada a ~1 m (5 decimales). Sin coordenadas válidas devuelve "". */
+export function cifrarUbicacion(lat: number | null | undefined, lng: number | null | undefined): string {
+  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return "";
+  return cifrar(JSON.stringify({ lat: Math.round(lat * 1e5) / 1e5, lng: Math.round(lng * 1e5) / 1e5 }), "crm.ubicacion");
+}
 
 /** Crea la persona y anota el evento «cliente nuevo» en la misma sentencia (atómico). */
 export async function crearPersona(abogadoId: number, p: NuevaPersona, hoy = hoyLocal()): Promise<number> {
@@ -123,8 +169,9 @@ export async function crearPersona(abogadoId: number, p: NuevaPersona, hoy = hoy
   const r = await d.execute({
     sql: `WITH nuevo AS (
             INSERT INTO crm_personas
-              (abogado_id, solicitud_id, nombre_enc, telefono_enc, email_enc, nota_enc, tipo, materia, region, comuna, origen, etapa, proximo_contacto)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              (abogado_id, solicitud_id, codigo_seguimiento, nombre_enc, telefono_enc, email_enc, nota_enc, tipo, materia, region, comuna, origen, etapa, proximo_contacto,
+               direccion_enc, ubicacion_enc, referido_por_enc)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id)
           INSERT INTO crm_eventos (abogado_id, persona_id, tipo, fecha)
           SELECT ?::int, id, 'consultas_nuevas', ?::text FROM nuevo
@@ -132,6 +179,7 @@ export async function crearPersona(abogadoId: number, p: NuevaPersona, hoy = hoy
     args: [
       abogadoId,
       p.solicitudId ?? null,
+      p.codigoSeguimiento ?? codigoCaso("CRM"),
       cifrar(p.nombre, "crm.nombre"),
       p.telefono ? cifrar(p.telefono, "crm.telefono") : "",
       p.email ? cifrar(p.email, "crm.email") : "",
@@ -143,6 +191,9 @@ export async function crearPersona(abogadoId: number, p: NuevaPersona, hoy = hoy
       p.origen ?? "otro",
       p.etapa ?? "prospecto",
       p.proximoContacto && esFecha(p.proximoContacto) ? p.proximoContacto : "",
+      p.direccion ? cifrar(p.direccion, "crm.direccion") : "",
+      cifrarUbicacion(p.lat, p.lng),
+      p.referidoPor ? cifrar(p.referidoPor, "crm.referido") : "",
       abogadoId,
       hoy,
     ],
@@ -159,8 +210,8 @@ export async function obtenerPersona(id: number, abogadoId: number): Promise<Per
 }
 
 export type CambiosPersona = Partial<
-  Pick<PersonaCrm, "nombre" | "telefono" | "email" | "nota" | "tipo" | "materia" | "region" | "comuna" | "origen" | "prioritario" | "valorEstimado" | "abogadoDestino">
->;
+  Pick<PersonaCrm, "nombre" | "telefono" | "email" | "nota" | "tipo" | "materia" | "region" | "comuna" | "origen" | "prioritario" | "valorEstimado" | "abogadoDestino" | "direccion" | "disponibilidad" | "referidoPor" | "informeVisible">
+> & { ubicacion?: { lat: number; lng: number } | null };
 
 export async function actualizarPersona(abogadoId: number, id: number, c: CambiosPersona): Promise<void> {
   const sets: string[] = [];
@@ -174,6 +225,11 @@ export async function actualizarPersona(abogadoId: number, id: number, c: Cambio
   if (c.email !== undefined) poner("email_enc", c.email ? cifrar(c.email, "crm.email") : "");
   if (c.nota !== undefined) poner("nota_enc", c.nota ? cifrar(c.nota, "crm.nota") : "");
   if (c.abogadoDestino !== undefined) poner("abogado_destino_enc", c.abogadoDestino ? cifrar(c.abogadoDestino, "crm.destino") : "");
+  if (c.direccion !== undefined) poner("direccion_enc", c.direccion ? cifrar(c.direccion, "crm.direccion") : "");
+  if (c.disponibilidad !== undefined) poner("disponibilidad_enc", c.disponibilidad ? cifrar(c.disponibilidad, "crm.disponibilidad") : "");
+  if (c.referidoPor !== undefined) poner("referido_por_enc", c.referidoPor ? cifrar(c.referidoPor, "crm.referido") : "");
+  if (c.informeVisible !== undefined) poner("informe_visible", c.informeVisible ? 1 : 0);
+  if (c.ubicacion !== undefined) poner("ubicacion_enc", c.ubicacion ? cifrarUbicacion(c.ubicacion.lat, c.ubicacion.lng) : "");
   if (c.tipo !== undefined) poner("tipo", c.tipo);
   if (c.materia !== undefined) poner("materia", c.materia);
   if (c.region !== undefined) poner("region", c.region);
@@ -197,7 +253,7 @@ export async function eliminarPersona(abogadoId: number, id: number): Promise<vo
 }
 
 /** Anota un evento una sola vez por persona (los hitos del embudo no se cuentan dos veces). */
-function eventoUnico(abogadoId: number, personaId: number, tipo: MetricaClave, fecha: string, detalle = "") {
+export function eventoUnico(abogadoId: number, personaId: number, tipo: MetricaClave, fecha: string, detalle = "") {
   return {
     sql: `INSERT INTO crm_eventos (abogado_id, persona_id, tipo, fecha, detalle)
           SELECT ?::int, ?::int, ?::text, ?::text, ?::text
@@ -247,16 +303,48 @@ export async function programarContacto(abogadoId: number, id: number, fecha: st
   if (r.rowsAffected === 0) throw new ErrorCrm(NO_ENCONTRADO);
 }
 
+export type FiltroClave = "referidos" | "sin_contacto" | "hito_proximo" | "nuevos_mandantes" | "urgentes" | "vencidos" | "por_contactar" | "postventa" | "sin_seguimiento" | "mandatos_por_firmar";
+
 export type FiltroPersonas = {
   q?: string;
   etapa?: EtapaCrm;
   grupoId?: number;
-  filtro?: "referidos" | "sin_contacto" | "hito_proximo" | "nuevos_mandantes" | "urgentes" | "vencidos" | "por_contactar" | "postventa";
+  filtro?: FiltroClave;
   region?: string;
   limite?: number;
 };
 
 const ABIERTAS_SQL = ETAPAS_ABIERTAS.map((e) => `'${e}'`).join(",");
+
+/** Condición SQL de cada filtro rápido (una sola definición: la usan la lista y los contadores). */
+export function condicionFiltro(filtro: FiltroClave, hoy: string, alias = "p"): { sql: string; args: unknown[] } {
+  const a = alias;
+  switch (filtro) {
+    case "referidos":
+      return { sql: `${a}.origen = 'referido' AND ${a}.etapa IN ('prospecto','contactado')`, args: [] };
+    case "sin_contacto":
+      return { sql: `${a}.etapa IN (${ABIERTAS_SQL}) AND ${a}.actualizado_en <= ahora(-7)`, args: [] };
+    case "hito_proximo":
+      return { sql: `${a}.fecha_hito <> '' AND ${a}.fecha_hito BETWEEN ? AND ?`, args: [hoy, sumarDias(hoy, 14)] };
+    case "nuevos_mandantes":
+      return { sql: `${a}.etapa = 'mandato'`, args: [] };
+    case "mandatos_por_firmar":
+      return { sql: `${a}.etapa = 'con_hito'`, args: [] };
+    case "urgentes":
+      return { sql: `(${a}.prioritario = 1 OR (${a}.proximo_contacto <> '' AND ${a}.proximo_contacto <= ?)) AND ${a}.etapa IN (${ABIERTAS_SQL})`, args: [hoy] };
+    case "vencidos":
+      return { sql: `${a}.proximo_contacto <> '' AND ${a}.proximo_contacto <= ? AND ${a}.etapa IN (${ABIERTAS_SQL})`, args: [hoy] };
+    case "sin_seguimiento":
+      return {
+        sql: `${a}.etapa IN (${ABIERTAS_SQL}) AND ((${a}.proximo_contacto <> '' AND ${a}.proximo_contacto <= ?) OR ${a}.actualizado_en <= ahora(-7))`,
+        args: [hoy],
+      };
+    case "por_contactar":
+      return { sql: `${a}.etapa = 'prospecto'`, args: [] };
+    case "postventa":
+      return { sql: `${a}.etapa IN ('mandato','cerrado') AND ${a}.actualizado_en <= ahora(-30)`, args: [] };
+  }
+}
 
 export async function listarPersonas(abogadoId: number, f: FiltroPersonas = {}, hoy = hoyLocal()): Promise<PersonaCrm[]> {
   const where = ["p.abogado_id = ?"];
@@ -273,34 +361,10 @@ export async function listarPersonas(abogadoId: number, f: FiltroPersonas = {}, 
     where.push("EXISTS (SELECT 1 FROM crm_grupo_personas gp WHERE gp.persona_id = p.id AND gp.grupo_id = ?)");
     args.push(f.grupoId);
   }
-  switch (f.filtro) {
-    case "referidos":
-      where.push("p.origen = 'referido' AND p.etapa IN ('prospecto','contactado')");
-      break;
-    case "sin_contacto":
-      where.push(`p.etapa IN (${ABIERTAS_SQL}) AND p.actualizado_en <= ahora(-7)`);
-      break;
-    case "hito_proximo":
-      where.push("p.fecha_hito <> '' AND p.fecha_hito BETWEEN ? AND ?");
-      args.push(hoy, sumarDias(hoy, 14));
-      break;
-    case "nuevos_mandantes":
-      where.push("p.etapa = 'mandato'");
-      break;
-    case "urgentes":
-      where.push(`(p.prioritario = 1 OR (p.proximo_contacto <> '' AND p.proximo_contacto <= ?)) AND p.etapa IN (${ABIERTAS_SQL})`);
-      args.push(hoy);
-      break;
-    case "vencidos":
-      where.push(`p.proximo_contacto <> '' AND p.proximo_contacto <= ? AND p.etapa IN (${ABIERTAS_SQL})`);
-      args.push(hoy);
-      break;
-    case "por_contactar":
-      where.push("p.etapa = 'prospecto'");
-      break;
-    case "postventa":
-      where.push("p.etapa IN ('mandato','cerrado') AND p.actualizado_en <= ahora(-30)");
-      break;
+  if (f.filtro) {
+    const c = condicionFiltro(f.filtro, hoy);
+    where.push(c.sql);
+    args.push(...c.args);
   }
   const d = await getDb();
   const r = await d.execute({
@@ -312,7 +376,8 @@ export async function listarPersonas(abogadoId: number, f: FiltroPersonas = {}, 
   // El nombre está cifrado: la búsqueda por texto se hace aquí, ya descifrado.
   if (f.q?.trim()) {
     const q = sinTildes(f.q.trim());
-    lista = lista.filter((p) => sinTildes(`${p.nombre} ${p.email} ${p.telefono} ${p.comuna}`).includes(q));
+    const qCodigo = q.replace(/[^a-z0-9]/g, "");
+    lista = lista.filter((p) => sinTildes(`${p.nombre} ${p.email} ${p.telefono} ${p.comuna}`).includes(q) || p.codigoSeguimiento.replace(/[^a-z0-9]/gi, "").toLowerCase().includes(qCodigo));
   }
   return lista;
 }
@@ -1030,14 +1095,15 @@ export async function solicitudesPorImportar(abogadoId: number): Promise<number>
  * Trae al CRM los casos que el abogado ya tiene en «solicitudes» (una vez por caso).
  * Los datos se descifran con su contexto original y se vuelven a cifrar con el del CRM.
  */
-export async function importarSolicitudes(abogadoId: number): Promise<number> {
+export async function importarSolicitudes(abogadoId: number, solicitudId?: number): Promise<number> {
   const d = await getDb();
   const r = await d.execute({
     sql: `SELECT s.* FROM solicitudes s
           WHERE s.asesor_id = ? AND s.anonimizada_en = ''
+            AND (?::int IS NULL OR s.id = ?::int)
             AND NOT EXISTS (SELECT 1 FROM crm_personas p WHERE p.solicitud_id = s.id)
           ORDER BY s.id`,
-    args: [abogadoId],
+    args: [abogadoId, solicitudId ?? null, solicitudId ?? null],
   });
   let n = 0;
   for (const s of r.rows) {
@@ -1060,12 +1126,13 @@ export async function importarSolicitudes(abogadoId: number): Promise<number> {
         etapa,
         proximoContacto: String(s.proximo_contacto ?? ""),
         solicitudId: Number(s.id),
+        codigoSeguimiento: String(s.codigo_seguimiento),
       },
       creada,
     );
     // Conserva la antigüedad real del caso para que el historial de indicadores tenga sentido.
     await d.execute({ sql: "UPDATE crm_personas SET creado_en = ?, actualizado_en = ? WHERE id = ?", args: [String(s.creado_en), String(s.actualizado_en), id] });
-    const ev = EVENTO_POR_ETAPA[etapa];
+    const ev = etapa === "derivado" && Number(s.abogado_confirmado) === 1 ? "derivaciones" : EVENTO_POR_ETAPA[etapa];
     if (ev) await d.batch([eventoUnico(abogadoId, id, ev, actual, "importado")]);
     n++;
   }

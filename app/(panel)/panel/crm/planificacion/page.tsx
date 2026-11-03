@@ -1,90 +1,194 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requerirAbogado } from "@/lib/guards";
-import { FUENTES_PLAN, esFuente } from "@/lib/crm/catalogo";
-import { fechaDMA, finPeriodo, nombreDiaLargo, sumarDias } from "@/lib/crm/fechas";
-import { listarPersonas, listarPlanes } from "@/lib/crm/servicio";
-import { periodoDeParams } from "@/lib/crm/vista";
-import { alternarPlanAccion, eliminarPlanAccion } from "@/lib/acciones/crm";
-import { FormPlan } from "@/components/crm/FormPlan";
+import { FUENTES_PLAN, METRICAS } from "@/lib/crm/catalogo";
+import { esFecha, esPeriodo, etiquetaCorta, finPeriodo, hoyLocal, inicioPeriodo, type Periodo } from "@/lib/crm/fechas";
+import { contarPeriodos, contarPlanes, historial, metasVigentes } from "@/lib/crm/servicio";
+import { asesoriasAgendadas, segmentos } from "@/lib/crm/servicio-planificacion";
+import { periodoDeParams, porcentaje } from "@/lib/crm/vista";
+import { BarraApp } from "@/components/panel/BarraApp";
+import { GraficoVerlauf } from "@/components/crm/GraficoVerlauf";
 import { IconoCrm } from "@/components/crm/IconosCrm";
-import { NavPeriodo, Seccion } from "@/components/crm/Piezas";
+import { NavPeriodo, Pestanas, Seccion } from "@/components/crm/Piezas";
 
-export const metadata: Metadata = { title: "CRM · Planificación semanal" };
+export const metadata: Metadata = { title: "Planificación semanal" };
 export const dynamic = "force-dynamic";
+
+const BASE = "/panel/crm/planificacion";
 
 export default async function Planificacion({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const u = await requerirAbogado();
   const sp = await searchParams;
-  const { inicio, hoy } = periodoDeParams({ ...sp, p: "semana" });
-  const fin = finPeriodo("semana", inicio);
-  const dias = Array.from({ length: 7 }, (_, i) => sumarDias(inicio, i));
-  const fuente = esFuente(sp.fuente) ? sp.fuente : undefined;
-  const [planes, personas] = await Promise.all([listarPlanes(u.id, inicio, fin), listarPersonas(u.id, { limite: 500 })]);
-  const visibles = fuente ? planes.filter((p) => p.fuente === fuente) : planes;
+  const tab = sp.t === "encontrar" || sp.t === "indicadores" ? sp.t : "personas";
+  const hoy = hoyLocal();
+  const periodoPedido: Periodo = esPeriodo(sp.p) && sp.p !== "dia" ? sp.p : "semana";
+  const { inicio } = periodoDeParams({ ...sp, p: "semana" }, "semana", hoy);
+  const inicioInd = inicioPeriodo(periodoPedido, esFecha(sp.d) ? sp.d : hoy);
+  const d = `&d=${inicio}`;
+
+  const pestanas = [
+    { href: `${BASE}?t=personas${d}`, texto: "Clientes", activa: tab === "personas" },
+    { href: `${BASE}?t=encontrar${d}`, texto: "Encontrar", activa: tab === "encontrar" },
+    { href: `${BASE}?t=indicadores&p=semana`, texto: "Indicadores clave", activa: tab === "indicadores" },
+  ];
 
   return (
     <>
-      <header className="p-cab">
-        <div className="p-cab-izq">
-          <Link href="/panel/crm" className="crm-volver" aria-label="Volver al inicio">
-            <IconoCrm nombre="flecha-izq" tam={22} />
-          </Link>
-          <h1>Planificación semanal</h1>
-          <span className="p-sub">Dónde y a quién buscarás cada día</span>
-        </div>
-      </header>
+      <BarraApp titulo="Planificación" volver="/panel/crm" />
       <div className="crm-pagina">
-        <NavPeriodo base="/panel/crm/planificacion" periodo="semana" inicio={inicio} extra={fuente ? `fuente=${fuente}` : undefined} />
-        <nav className="crm-chips" aria-label="Filtrar por fuente">
-          <Link href={`/panel/crm/planificacion?d=${inicio}`} className={!fuente ? "activa" : undefined}>
-            Todas <span className="n">{planes.length}</span>
-          </Link>
-          {FUENTES_PLAN.map((f) => (
-            <Link key={f.clave} href={`/panel/crm/planificacion?d=${inicio}&fuente=${f.clave}`} className={fuente === f.clave ? "activa" : undefined}>
-              {f.nombre} <span className="n">{planes.filter((p) => p.fuente === f.clave).length}</span>
-            </Link>
-          ))}
-        </nav>
+        <Pestanas items={pestanas} etiqueta="Secciones de la planificación" />
+        {tab === "personas" ? <TabPersonas abogadoId={u.id} inicio={inicio} hoy={hoy} /> : null}
+        {tab === "encontrar" ? <TabEncontrar abogadoId={u.id} inicio={inicio} hoy={hoy} /> : null}
+        {tab === "indicadores" ? <TabIndicadores abogadoId={u.id} periodo={periodoPedido} inicio={inicioInd} hoy={hoy} /> : null}
+      </div>
+    </>
+  );
+}
 
-        {dias.map((dia) => {
-          const delDia = visibles.filter((p) => p.fecha === dia);
+async function TabPersonas({ abogadoId, inicio, hoy }: { abogadoId: number; inicio: string; hoy: string }) {
+  const segs = await segmentos(abogadoId, inicio, hoy);
+  return (
+    <>
+      <NavPeriodo base={BASE} periodo="semana" inicio={inicio} extra="t=personas" />
+      <ul className="crm-lista-enlaces grande">
+        {segs.map((s) => (
+          <li key={s.clave}>
+            <Link href={`${BASE}/personas/${s.clave}?d=${inicio}`}>
+              <span>
+                <strong>{s.titulo}</strong>
+                <small>{s.total === 0 ? "Nadie por ahora" : `${s.conPlan} de ${s.total} clientes con plan esta semana`}</small>
+              </span>
+              <IconoCrm nombre="flecha-der" tam={22} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+async function TabEncontrar({ abogadoId, inicio, hoy }: { abogadoId: number; inicio: string; hoy: string }) {
+  const [planes, ase, segs] = await Promise.all([contarPlanes(abogadoId, inicio, finPeriodo("semana", inicio)), asesoriasAgendadas(abogadoId, inicio), segmentos(abogadoId, inicio, hoy)]);
+  const antiguos = segs.find((s) => s.clave === "antiguos");
+  const fila = (clave: string) => FUENTES_PLAN.find((f) => f.clave === clave)!;
+  return (
+    <>
+        <ul className="crm-lista-enlaces grande">
+          <li>
+            <Link href={`${BASE}/encontrar/asesorias?d=${inicio}`}>
+              <span>
+                <strong>{fila("asesorias").nombre}</strong>
+                <small>{ase > 0 ? `${ase} asesoría${ase === 1 ? "" : "s"} agendada${ase === 1 ? "" : "s"} esta semana` : "Sin asesorías agendadas"}</small>
+              </span>
+              <IconoCrm nombre="flecha-der" tam={22} />
+            </Link>
+          </li>
+          <li>
+            <Link href={`${BASE}/encontrar/antiguos?d=${inicio}`}>
+              <span>
+                <strong>{fila("antiguos").nombre}</strong>
+                <small>{antiguos?.total ? `${antiguos.total} clientes para retomar` : "Aún no tienes clientes antiguos"}</small>
+              </span>
+              <IconoCrm nombre="flecha-der" tam={22} />
+            </Link>
+          </li>
+          {(["red", "actividades", "interesados"] as const).map((k) => (
+            <li key={k} className="con-boton">
+              <span>
+                <strong>{fila(k).nombre}</strong>
+                <small>{planes[k] > 0 ? `${planes[k]} plan${planes[k] === 1 ? "" : "es"} pendiente${planes[k] === 1 ? "" : "s"}` : "Sin planes agregados"}</small>
+              </span>
+              <Link href={`${BASE}/encontrar/${k}?d=${inicio}`} className="btn btn-primario btn-chico">
+                {planes[k] > 0 ? "Ver planes" : "Agregar planes"}
+              </Link>
+            </li>
+          ))}
+        </ul>
+    </>
+  );
+}
+
+async function TabIndicadores({ abogadoId, periodo, inicio, hoy }: { abogadoId: number; periodo: Periodo; inicio: string; hoy: string }) {
+  const lista = METRICAS.filter((m) => m.periodos.includes(periodo));
+  const [real, meta, hist] = await Promise.all([
+    contarPeriodos(abogadoId, periodo, [inicio]),
+    metasVigentes(abogadoId, periodo, inicio),
+    Promise.all(lista.map((m) => historial(abogadoId, m.clave, periodo, inicio, 6))),
+  ]);
+  const href = (p: Periodo) => `${BASE}?t=indicadores&p=${p}&d=${inicioPeriodo(p, p === periodo ? inicio : hoy)}`;
+  return (
+    <>
+      <div className="crm-pestanas sub" role="tablist" aria-label="Período de los indicadores">
+        <Link href={href("semana")} role="tab" aria-selected={periodo === "semana"} className={periodo === "semana" ? "activa" : undefined}>
+          Semanal
+        </Link>
+        <Link href={href("mes")} role="tab" aria-selected={periodo === "mes"} className={periodo === "mes" ? "activa" : undefined}>
+          Mensual
+        </Link>
+      </div>
+      <NavPeriodo base={BASE} periodo={periodo} inicio={inicio} extra="t=indicadores" />
+
+      <ul className="crm-indicadores">
+        {lista.map((m, i) => {
+          const r = real[inicio][m.clave];
+          const t = meta[m.clave];
+          const ok = t > 0 && r >= t;
           return (
-            <Seccion key={dia} titulo={`${nombreDiaLargo(dia)}${dia === hoy ? " · hoy" : ""}`}>
-              {delDia.length === 0 ? (
-                <p className="crm-vacio">Sin planes.</p>
-              ) : (
-                <ul className="crm-tareas">
-                  {delDia.map((p) => (
-                    <li key={p.id} className={p.hecho ? "hecha" : undefined}>
-                      <form action={alternarPlanAccion}>
-                        <input type="hidden" name="id" value={p.id} />
-                        <button type="submit" className="crm-casilla" aria-pressed={p.hecho} aria-label={p.hecho ? "Marcar como pendiente" : "Marcar como hecho"}>
-                          {p.hecho ? <IconoCrm nombre="check" tam={16} /> : null}
-                        </button>
-                      </form>
-                      <span>
-                        {p.personaId ? <Link href={`/panel/crm/clientes/${p.personaId}`}>{p.persona}</Link> : p.texto}
-                        <small className="crm-chip">{FUENTES_PLAN.find((f) => f.clave === p.fuente)?.nombre}</small>
-                      </span>
-                      <form action={eliminarPlanAccion}>
-                        <input type="hidden" name="id" value={p.id} />
-                        <button type="submit" className="crm-icono-boton" aria-label={`Quitar el plan del ${fechaDMA(p.fecha)}`}>
-                          <IconoCrm nombre="papelera" tam={16} />
-                        </button>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Seccion>
+            <li key={m.clave}>
+              <Link href={`/panel/crm/metas/${m.clave}?p=${periodo}&d=${inicio}`} className="crm-indicador-fila">
+                <span className="crm-indicador-nombre">
+                  <IconoCrm nombre={m.icono} tam={22} />
+                  {m.nombre}
+                </span>
+                <span className={`crm-indicador-valor${ok ? " ok" : ""}`}>
+                  {r}/{t}
+                  {ok ? <IconoCrm nombre="check" tam={18} /> : null}
+                </span>
+                <span className="crm-kpi-barra" role="progressbar" aria-valuenow={r} aria-valuemin={0} aria-valuemax={Math.max(t, 1)} aria-label={`Avance de ${m.corto}`}>
+                  <span style={{ width: `${porcentaje(r, t)}%` }} />
+                </span>
+              </Link>
+              {periodo === "mes" ? <GraficoVerlauf puntos={hist[i]} periodo="mes" titulo={`Evolución mensual de ${m.corto}`} /> : null}
+            </li>
           );
         })}
+      </ul>
 
-        <Seccion titulo="Agregar un plan" id="nuevo-plan">
-          <FormPlan dias={dias} personas={personas.map((p) => ({ id: p.id, nombre: p.nombre }))} fuente={fuente} />
+      {periodo === "semana" ? (
+        <Seccion titulo="Registro de tus metas" id="registro">
+          <div className="crm-tabla-envoltura">
+            <table className="crm-tabla crm-registro">
+              <thead>
+                <tr>
+                  <th scope="col">Indicador</th>
+                  {hist[0]?.map((p) => (
+                    <th key={p.inicio} scope="col">
+                      {etiquetaCorta("semana", p.inicio)[0]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map((m, i) => (
+                  <tr key={m.clave}>
+                    <th scope="row">{m.corto}</th>
+                    {hist[i].map((p) => {
+                      const cumplida = p.meta > 0 && p.real >= p.meta;
+                      return (
+                        <td key={p.inicio} className={cumplida ? "ok" : p.real === 0 ? "cero" : undefined} title={`${p.real} de ${p.meta}`}>
+                          {cumplida ? "✓ " : ""}
+                          {p.real}
+                          <span>/{p.meta}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Seccion>
-      </div>
+      ) : null}
     </>
   );
 }

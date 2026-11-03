@@ -64,6 +64,10 @@ async function crearPersonaInterna(_prev: EstadoForm, fd: FormData): Promise<Est
     comuna: c.comuna,
     origen: c.origen,
     proximoContacto: c.proximo_contacto,
+    direccion: c.direccion,
+    referidoPor: c.referido_por,
+    lat: c.lat === "" ? null : Number(c.lat),
+    lng: c.lng === "" ? null : Number(c.lng),
   });
   refrescar();
   return { ok: `Agregado: ${c.nombre}.`, valores: { id: String(id) } };

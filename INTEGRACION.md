@@ -1,185 +1,175 @@
-# Neife CRM para abogados · guía de integración
+# Neife CRM v2.1 para abogados · guía de integración
 
-Módulo que agrega a **Neife** un CRM completo de seguimiento de clientes con indicadores y metas semanales, mensuales y diarias, en el mismo estilo de trabajo de la app de referencia (indicadores clave, metas editables, clientes con avance, gestiones abiertas, grupos, plan semanal, botón «+» de acciones rápidas), pero con el vocabulario y el embudo de un abogado.
+Esta es la **versión 2.1 completa** (corrige la 2.0: Inicio y Casos quedan como antes, sin títulos ni textos de relleno, y las pantallas copian la app de referencia) del módulo CRM. Reemplaza a la v1 (no es un parche): trae todos los archivos, un instalador seguro de repetir y esta guía. Se probó contra tu proyecto original (Next.js 16, React 19, Postgres): tipos sin errores, **39 pruebas automáticas pasan**, el build de producción compila y las 40 pantallas se recorrieron en el navegador con datos de demostración.
 
-Se probó contra tu proyecto real (Next.js 16, Postgres, `pg`, sesiones propias): tipos sin errores, **34 pruebas automáticas pasan** (las 20 que ya tenías más 14 nuevas), `next build` compila y las 12 pantallas se recorrieron en un navegador con datos de ejemplo.
+Las capturas están en `docs/capturas-crm/`.
 
 ---
 
-## 1. Qué trae
+## 1. Qué cambió respecto de la v1
 
-| Pantalla | Ruta | Qué hace |
-|---|---|---|
-| Inicio | `/panel/crm` | Indicadores semanales y mensuales, «Meta de hoy», clientes con avance, gestiones abiertas, ayudas, filtros rápidos y grupos |
-| Indicadores | `/panel/crm/metas` | Todos los indicadores por día, semana o mes, con navegación por período |
-| Editar meta | `/panel/crm/metas/[indicador]` | Meta con − / +, «Real: n» desplegable, «Potencial» (a quién mover), planes para encontrar clientes y gráfico de evolución |
-| Clientes | `/panel/crm/clientes` | Lista agrupada por cercanía a concretarse, búsqueda, etapas, grupos y filtros rápidos |
-| Ficha del cliente | `/panel/crm/clientes/[id]` | Etapa, contacto (llamar, WhatsApp, correo), hito, próximo contacto, historial, tareas, grupos, edición y borrado |
-| Agenda | `/panel/crm/agenda` | Hitos, contactos, tareas y planes de la semana, más lo atrasado |
-| Planificación semanal | `/panel/crm/planificacion` | Plan por día: dónde y a quién buscar clientes (5 fuentes) |
-| Tareas / Notas | `/panel/crm/tareas`, `/notas` | Lista de tareas y notas rápidas |
-| Zonas | `/panel/crm/zonas` | Clientes por región y comuna |
-| Informes | `/panel/crm/informes` | Metas de 6 meses, embudo de 90 días, clientes por etapa y gráficos |
-| Plantillas | `/panel/crm/plantillas` | Mensajes para copiar, guía de primera asesoría y reglas que cuidar |
-
-Botón **«+»** flotante en todo el CRM: Cliente, Asesoría, Reunión o audiencia, Contacto y Tarea, con un formulario corto.
-
-### Equivalencias con la app de referencia
-
-| Referencia | CRM legal |
+| Lo que pediste | Cómo quedó |
 |---|---|
-| Personas | Clientes |
-| Neue Personen (nuevos que reciben lecciones) | Clientes nuevos |
-| Lektionen mit beteiligtem Mitglied | Asesorías con abogado o colega presente |
-| Mit Taufdatum | Casos con fecha de hito (audiencia, mediación, firma, plazo) |
-| Potenzielles Mitglied – Versammlung | Clientes que asisten a reunión o audiencia |
-| Getauft und konfirmiert + meta mensual | Mandatos firmados + meta del mes |
-| Pläne zum Finden | Planificación semanal (5 fuentes) |
-| Gruppen / Aufgaben / Kurznotizen | Grupos / Tareas / Notas rápidas |
+| «Ver todos» de indicadores semanales | Lleva a **Planificación semanal → Indicadores clave** (`/panel/crm/planificacion?t=indicadores`). Ya no hay página de metas duplicada: `/panel/crm/metas` redirige ahí. |
+| Planificación semanal con 3 pestañas | **Clientes** («X de Y con plan», 4 segmentos tocables), **Encontrar** (solo los planes para llegar a los indicadores; sin cifras) e **Indicadores clave**. |
+| Indicadores semanal vs mensual | Semanal: filas X/Y + **registro de logros** (qué hiciste, cuándo). Mensual: **gráficos**. |
+| Nada vacío ni sin función | Cada «gestión abierta» tiene su pantalla con acciones por fila: `/panel/crm/gestion/<clave>`. Más: notas de zona, plantillas (usables), guía de primera asesoría (lista marcable), consejos, informes de caso, mis casos. |
+| Agenda real | Calendario con tira de días, línea de horas, línea de «ahora», vista Día/Semana; tocas un espacio vacío para agendar y tocas una cita para ver, cambiar estado, editar o borrar. |
+| Botón «+» contextual | En Clientes solo agrega cliente; en Agenda/Resumen ofrece Tarea, Audiencia, Reunión, Asesoría, Contacto y Evento. |
+| Mapa | Pantalla solo de mapa (**Leaflet + OpenStreetMap/relieve**), con fila de filtros, botón de capas y botón flotante que abre Notas de zona, Clientes sin ubicación y Por comuna. Un punto por cliente, con un punto por cliente, coloreado por etapa; en la ficha eliges el punto (buscar dirección, «usar mi ubicación» o arrastrar el pin). |
+| Informes reales | `/panel/crm/informes`: **Casos** (avance de cada cliente + informe imprimible), **Derivaciones** (a qué colega, comisión, cómo fue el trato, conformidad), **Conformidad** y **Mes**. |
+| Inicio y Casos | **Inicio** (`/panel/crm`) y **Casos** (`/panel`) quedan como antes. Los siguientes pasos, informes de avance, derivaciones y conformidad viven en **Informes** (5.º acceso de la barra inferior). |
+| Ficha con Perfil / Progreso / Línea de tiempo | Banner rojo (falta) o verde (al día), % de avance, requisitos con estado, conformidad con estrellas, derivación, y línea de tiempo con lo que viene y la historia. |
+| Identificación sin confundir nombres repetidos | Cada solicitud recibe un código único corto `CASO-XXXX-XXXX-XXXX`; al aceptarla, conserva el mismo código en su ficha CRM. Los clientes creados desde el panel reciben uno `CRM-XXXX-XXXX-XXXX`. Se muestra en el seguimiento, la ficha y la lista, y se busca desde Buscar, incluso sin los guiones. |
+| Informes que se autogeneran | El informe del cliente se arma solo con su ficha (sin notas internas, teléfono ni comisiones). Aparece «casi listo» desde 65 % y «listo» desde 85 %. |
+| Menú unificado | Menú ☰ con listas (Casos, Notificaciones, Colegas, Indicadores, Tareas, Plantillas…); barra inferior: Inicio, Agenda, Clientes, Mapa, Informes y pestañas arriba en pantalla grande. |
 
-### Indicadores incluidos (8)
-
-Clientes nuevos · Asesorías realizadas · Asesorías con colega · Casos con fecha de hito · Clientes en reunión o audiencia · Mandatos firmados · Clientes conectados con un abogado · Casos resueltos. Cada uno puede tener meta **diaria, semanal o mensual** (según corresponda). Para agregar o renombrar indicadores ver el punto 7.
+Mejoras que agregué por mi cuenta: notificaciones calculadas (con «Posponer» y «Descartar»), contacto rápido («Ya lo contacté»), cruce de citas avisado, citas realizadas que se convierten solas en registro e indicador, y plantillas que se rellenan con el nombre del cliente y abren WhatsApp.
 
 ---
 
-## 2. Qué hay en el ZIP
+## 2. Contenido del ZIP
 
-Todo está en las mismas rutas de tu proyecto: se descomprime **encima** de la carpeta raíz de Neife. Solo se agregan archivos nuevos; el instalador agrega una migración Prisma y modifica el menú lateral y `package.json` (con copias de respaldo).
+Todo está en las mismas rutas de tu proyecto. Se descomprime **encima** de la raíz de Neife.
 
 ```
-db/crm.sql                              tablas del CRM
-lib/crm/catalogo.ts                     indicadores, etapas, orígenes (lo que más vas a editar)
-lib/crm/fechas.ts                       semana lunes-domingo, hora de Chile
-lib/crm/servicio.ts                     toda la lógica y las consultas
-lib/crm/validadores.ts                  validación de formularios (zod)
-lib/crm/vista.ts                        ayudas para las páginas
-lib/acciones/crm.ts                     acciones de servidor (formularios)
-components/crm/*                        piezas visuales
-app/crm.css                             estilos (usa los colores de globals.css)
-app/(panel)/panel/crm/**                las 12 pantallas
-scripts/instalar-crm.ts                 conecta el módulo (3 cambios, repetible)
-scripts/demo-crm.ts                     14 clientes ficticios para probar
-tests/crm.test.ts                       14 pruebas automáticas
-docs/capturas-crm/                      capturas de las pantallas
+db/crm.sql                               esquema CRM completo (el instalador extrae la migración incremental)
+lib/crm/catalogo.ts                      indicadores, etapas, tipos de cita, gestiones (lo que más editarás)
+lib/crm/contenido.ts                     consejos, plantillas de mensaje, guía de primera asesoría
+lib/crm/fechas.ts · vista.ts             fechas (semana lunes-domingo, hora de Chile) y ayudas
+lib/crm/progreso.ts                      cálculo del % de avance y de lo que falta (función pura)
+lib/crm/servicio*.ts                     lógica y consultas: clientes, citas, seguimiento, avisos, planificación, informes
+lib/crm/validadores.ts                   validación de formularios (zod)
+lib/acciones/crm.ts · crm2.ts            acciones de servidor
+components/crm/*                         piezas visuales (calendario, mapa, formularios…)
+components/panel/ShellPanel.tsx          cascarón con menú de hamburguesa
+app/crm.css                              estilos del CRM y del cascarón
+app/(panel)/panel/crm/**                 pantallas del CRM
+instalacion/panel-layout.tsx             nuevo layout del panel (lo copia el instalador)
+instalacion/panel-page.tsx               tu pantalla «Casos» original (el instalador la restaura en /panel)
+scripts/instalar-crm.ts                  instalador (seguro de repetir, con --dry-run)
+scripts/demo-crm.ts                      datos ficticios de demostración
+tests/crm.test.ts                        pruebas
 ```
+
+Los archivos `instalacion/panel-*.tsx` **no están** en su lugar final a propósito: así, al descomprimir, no se pisa tu `panel/page.tsx` ni tu `layout.tsx` antes de que el instalador los respalde.
 
 ---
 
 ## 3. Instalación (10 minutos)
 
-Haz una rama o copia antes: `git checkout -b crm`.
+1. **Respalda tu proyecto** (git commit o copia de la carpeta).
+2. **Descomprime el ZIP encima de la carpeta raíz de Neife**, aceptando reemplazar archivos (reemplazará los de la v1).
+3. En la raíz del proyecto:
+   ```bash
+   npx tsx scripts/instalar-crm.ts --dry-run   # solo muestra qué haría
+   npx tsx scripts/instalar-crm.ts             # lo aplica
+   npm install                                 # instala leaflet
+   npm run db:migrate                          # aplica la migración incremental
+   npm run typecheck
+   npm run dev
+   ```
+4. Entra como abogado. La base de datos se actualiza con `npm run db:migrate` (ver 4).
+5. Opcional, solo en desarrollo: `npm run demo:crm` carga 14 clientes ficticios, citas, requisitos, una derivación y puntos en el mapa (usuario `asesor@neife.test` / `AsesorDemo-2026`, del `npm run demo`).
 
-```bash
-# 1. Descomprime el ZIP en la raíz de Neife (donde está package.json)
-unzip neife-crm.zip -d .
+### Qué hace el instalador
 
-# 2. Mira qué va a cambiar, y luego aplícalo
-npx tsx scripts/instalar-crm.ts --dry-run
-npx tsx scripts/instalar-crm.ts
+| Archivo | Cambio |
+|---|---|
+| `prisma/migrations/20261103000000_crm_v2/migration.sql` | Crea una migración incremental a partir de la sección v2 de `db/crm.sql` |
+| `lib/db.ts` | No se modifica; Prisma administra y verifica las migraciones |
+| `app/(panel)/panel/layout.tsx` | Nuevo cascarón (guarda copia `.bak-crm`/`.bak-crm2`) |
+| `app/(panel)/panel/page.tsx` | Nuevo Resumen (guarda copia) |
+| `next.config.mjs` | Agrega a la CSP `img-src https://tile.openstreetmap.org` y `connect-src https://nominatim.openstreetmap.org`, y `geolocation=(self)` |
+| `package.json` | `leaflet`, `@types/leaflet` y `npm run demo:crm` |
+| `components/crm/BarraCrm.tsx` | Se borra (era de la v1) |
 
-# 3. Revisa que todo compile y arranca
-npm run db:migrate
-npm run typecheck
-npm run dev
+Si algo no se reconoce, el instalador lo dice y no adivina; el paso manual correspondiente está en la sección 8.
 
-# 4. (solo para probar) datos de ejemplo, usando al asesor de «npm run demo»
-npm run demo        # si aún no lo corriste
-npm run demo:crm
-```
+### Si ya tenías la v1 instalada
+Es el mismo procedimiento: el bloque SQL se **reemplaza** (todas las sentencias nuevas son `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS`, así que **no se pierden datos** de la v1). Los clientes, interacciones, metas y tareas siguen tal cual.
 
-Entra como `asesor@neife.test` / `AsesorDemo-2026` → menú lateral **CRM**. Las tablas se crean mediante la migración Prisma, que también se ejecuta durante `npm run build`.
+La migración `20261103190000_crm_ticket_seguimiento` agrega el código único a solicitudes y clientes existentes. Al importar un caso al CRM se conserva el código de la solicitud; los clientes agregados manualmente reciben uno propio. La búsqueda por código requiere iniciar sesión en el dashboard, y el código no sustituye al enlace privado de seguimiento.
 
-### Qué modifica el instalador (por si prefieres hacerlo a mano)
-
-1. **`prisma/migrations/20261031000000_crm/migration.sql`**: copia el contenido de `db/crm.sql`; Prisma aplica y registra esta migración.
-2. **`app/(panel)/panel/layout.tsx`**: agrega bajo «Casos» la línea
-  `{ href: "/panel/crm", texto: "CRM", icono: "usuarios" },`
-3. **`package.json`**: agrega el script `"demo:crm": "tsx scripts/demo-crm.ts"`.
-
-Los archivos existentes modificados quedan con una copia `*.bak-crm` al lado. Para deshacer: restaura las copias y borra la migración y las carpetas nuevas. Las tablas `crm_*` pueden quedarse en la base sin molestar.
-
-No hace falta nueva dependencia, nueva variable de entorno ni nuevo servicio: usa `pg`, `zod`, `jose` y el cifrado que ya tienes.
-
----
-
-## 4. Cómo se conecta con lo que ya tienes
-
-- **Sesión y permisos**: cada pantalla y cada acción llama a `requerirAbogado()` (tu `lib/guards.ts`). Solo abogados con cuenta verificada entran. El administrador no ve el CRM.
-- **Aislamiento**: toda consulta filtra por `abogado_id`; un abogado jamás ve ni toca los clientes de otro (hay una prueba que lo verifica).
-- **Cifrado**: nombre, teléfono, correo, notas, historial y tareas se guardan cifrados con tu `lib/crypto.ts` (AES-256-GCM, atado a la columna con contextos `crm.*`). Sin cambios en `DATA_ENCRYPTION_KEY`. Lo que **no** va cifrado: materia, región, comuna, etapa y fechas, porque se necesitan para filtrar y calcular; no identifican a la persona por sí solos.
-- **Auditoría**: crear, eliminar, cambiar de etapa e importar quedan en tu tabla `auditoria`.
-- **Base de datos**: usa tu capa `getDb()` (`execute` / `batch`, con `?` y transacciones). Las fechas siguen tu convención de texto; los días se guardan como `YYYY-MM-DD` en hora de Chile.
-- **Estilo**: `app/crm.css` solo usa tus variables (`--pizarra`, `--cafe`, `--crema`, `--azul`…) y tus clases (`.p-cab`, `.btn`, `.entrada`). Si cambias la paleta en `globals.css`, el CRM la sigue.
-
-### Cómo se calculan los indicadores
-
-Cada cosa medible escribe una fila en `crm_eventos` (un «libro de eventos») **en la misma transacción** que el cambio. Los indicadores se **cuentan** desde ahí; nunca hay contadores guardados que puedan desfasarse. Por eso:
-
-- Borrar una asesoría corrige el indicador solo (los eventos se borran en cascada).
-- Hitos del embudo (fecha de hito, mandato, derivación, caso resuelto) se cuentan **una sola vez por cliente**, aunque cambies la etapa de ida y vuelta.
-- «Clientes distintos» vs «cada vez» lo define el catálogo (`modo: "personas" | "eventos"`).
-- Las metas se guardan por período y **rigen hacia adelante** hasta que las cambies: fijar «8» en una semana la deja en 8 las semanas siguientes. Si nunca fijaste una, se usa el valor base del catálogo.
-
-### Tablas nuevas
-
-`crm_personas`, `crm_interacciones`, `crm_eventos`, `crm_metas`, `crm_tareas`, `crm_grupos`, `crm_grupo_personas`, `crm_planes`. Todas con `ON DELETE CASCADE` desde `usuarios` y RLS activado.
+La migración `20261103200000_codigo_seguimiento_corto` acorta los códigos ya asignados y conserva el vínculo entre solicitud y cliente; las próximas solicitudes y fichas usarán el mismo formato corto.
 
 ---
 
-## 5. Traer tus casos actuales y conectar los nuevos
+## 4. Base de datos
 
-- **Casos que ya existen**: en `/panel/crm/clientes` aparece el aviso «Importar mis casos» cuando hay solicitudes que aún no están en el CRM. Descifra y vuelve a cifrar con el contexto del CRM, conserva la antigüedad, mapea las etapas (nueva→Prospecto, en curso→En asesoría, derivada→Derivado, cerrada→Resuelto, rechazada→No continuó) y no duplica si lo repites. Omite casos anonimizados.
-- **Casos nuevos (opcional)**: para que cada solicitud nueva aparezca sola en el CRM, llama a la importación al final de la acción que la crea:
-
-```ts
-// lib/acciones/solicitudes.ts, después de crear la solicitud y antes del redirect
-import { importarSolicitudes } from "../crm/servicio";
-await importarSolicitudes(asesorId); // trae solo las que faltan
-```
-
-  Hazlo dentro de `after(() => …)` si no quieres demorar la respuesta. Lo mismo para `contactoRapido` en `lib/acciones/panel.ts`. No lo dejé automático para no modificar tus flujos de solicitudes sin que lo decidas.
+- Tablas nuevas: `crm_citas`, `crm_pasos` (requisitos), `crm_derivaciones`, `crm_avisos_ocultos`, `crm_zona_notas`.
+- Columnas nuevas en `crm_personas`: dirección, ubicación, disponibilidad, quién lo refirió, `informe_visible`, conformidad y su nota.
+- **Todo dato personal va cifrado** (AES-256-GCM, con una clave de contexto distinta por campo `crm.*`): nombre, contacto, notas, dirección, **coordenadas**, títulos de citas, nombre del colega, trato de la derivación.
+- Todas las consultas filtran por `abogado_id`, y las tablas `crm_*` tienen seguridad por filas (RLS) activada; una prueba automática lo verifica.
+- Este proyecto administra el esquema con Prisma. En desarrollo aplica la migración con `npm run db:migrate`; el comando de producción `npm run build` también ejecuta `prisma migrate deploy`.
+- Las notificaciones **no se guardan**: se calculan al abrir la pantalla. Solo se guarda lo que pospones o descartas.
 
 ---
 
-## 6. Publicar (Vercel + Supabase)
+## 5. Mapa, OpenStreetMap y privacidad
 
-Despliega la migración Prisma junto con el cambio. `npm run build` ejecuta `prisma migrate deploy` antes de compilar. Confirma en Supabase que las 8 tablas `crm_*` aparecen con RLS activado. **No corras `npm run demo:crm` en producción** (el script se niega si `NODE_ENV=production`).
-
----
-
-## 7. Personalizar
-
-Todo en `lib/crm/catalogo.ts`:
-
-- **Agregar un indicador**: suma un objeto a `METRICAS` (clave, nombre, ayuda, icono, `modo`, períodos, metas base) y amplía el tipo `MetricaClave`. Para que se mueva, haz que alguna acción escriba un evento con esa clave (en `servicio.ts`, ver `registrarInteraccion` o `EVENTO_POR_ETAPA`). Para el «Potencial», agrega su regla en `potencial()`.
-- **Qué se ve en el Inicio**: `HOME_SEMANAL` y `HOME_MENSUAL`.
-- **Etapas, hitos, canales, orígenes, grupos base**: `ETAPAS_CRM`, `TIPOS_HITO`, `CANALES`, `ORIGENES_CRM`, `GRUPOS_BASE`. Si agregas una etapa, también hay que sumarla al `CHECK` de `crm_personas.etapa` en `db/crm.sql` (y a una migración si la base ya existe).
-- **Metas base** (lo que ve alguien que aún no fija las suyas): campo `base` de cada indicador.
-- **Textos de plantillas y reglas**: `app/(panel)/panel/crm/plantillas/page.tsx`.
+- Leaflet se carga solo en el navegador; las baldosas vienen de `tile.openstreetmap.org` y la búsqueda de direcciones de `nominatim.openstreetmap.org`.
+- **El navegador del abogado envía a esos servicios** la zona que está viendo (baldosas) y el texto que escribe al buscar una dirección. Nunca se envían nombres ni datos del cliente. Aun así, la dirección de un cliente es un dato personal: infórmalo en tu política de privacidad.
+- Política de uso de OSM: sirve para uso personal y de bajo volumen. Si el uso crece, contrata un proveedor de baldosas (MapTiler, Stadia, etc.) cambiando `TILES` en `components/crm/leaflet.ts` y la CSP.
+- Las coordenadas se guardan **con 5 decimales (~1 m)**. Si prefieres menos precisión (p. ej. solo la comuna), reduce los decimales en `cifrarUbicacion` (`lib/crm/servicio.ts`).
+- Para los puntos exactos se usa el punto que tú eliges: no se geolocaliza al cliente de forma automática.
 
 ---
 
-## 8. Cosas a decidir y revisar antes de usarlo con clientes reales
+## 6. Antes de usarlo con clientes reales (importante)
 
-- **Un abogado debe revisar los textos y el flujo.** Los datos de ejemplo, las plantillas y los «consejos» son un punto de partida, no asesoría.
-- **Captación y publicidad**: el CRM sirve para dar seguimiento a quienes ya te contactaron o te fueron recomendados. Contactar a personas en frío puede chocar con las reglas de publicidad y captación de clientela del Código de Ética del Colegio de Abogados. Confírmalo con un abogado; la página de plantillas ya lo advierte.
-- **Datos personales**: estás guardando datos de clientes. Revisa con un abogado qué exige la Ley 19.628 y la nueva ley de protección de datos personales (verifica su fecha de entrada en vigencia), y actualiza `/privacidad` para mencionar el CRM. Hoy tu política de borrado (`npm run limpiar`) **no incluye** las tablas `crm_*`: define cuánto tiempo conservarás clientes inactivos y agrega ese borrado (candidatos: etapas «No continuó» y «Resuelto» con más de N meses).
-- **Respaldos**: igual que antes, guarda `DATA_ENCRYPTION_KEY` aparte; sin ella los datos cifrados del CRM tampoco se recuperan.
-- **Mapa**: la referencia tiene un mapa de territorio. Aquí «Zonas» agrupa por región y comuna; un mapa real necesitaría teselas externas y relajar el `Content-Security-Policy` (`img-src`), así que lo dejé fuera a propósito.
+Soy un asistente, no un abogado: revisa esto con tu criterio y con quien corresponda.
 
-## 9. Límites conocidos y siguientes pasos naturales
+- **Datos personales (Ley 19.628 y su actualización por la Ley 21.719).** Tienes datos de terceros, algunos sensibles por su contexto (casos penales, de familia). Define finalidad, plazo de conservación y cómo atiendes solicitudes de acceso o eliminación. «Eliminar cliente» borra la ficha y su historial; no hay un plazo automático de limpieza: defínelo tú.
+- **Secreto profesional y ética.** El informe del cliente omite notas internas, teléfono y comisiones, pero **tú decides** si activas «Informe visible para el cliente» y qué le muestras. Las plantillas traen un recordatorio de revisar las normas de publicidad y captación del Código de Ética del Colegio de Abogados.
+- **Comisiones por derivación.** El módulo solo **registra** lo que acordaron; revisa que el acuerdo sea compatible con las normas éticas aplicables a tu caso.
+- **El informe no es asesoría legal**; el texto lo aclara al pie.
+- **Respaldos.** Los datos cifrados dependen de `DATA_ENCRYPTION_KEY`: si la pierdes, no se recuperan. Respáldala fuera de la base.
 
-- El selector de clientes del botón «+» carga hasta 500 clientes; para carteras muy grandes conviene cambiarlo por búsqueda.
-- Reordenar grupos se hace con flechas ↑↓ (más fiable en el celular que arrastrar).
-- No hay exportación a CSV ni resumen semanal por correo; el segundo encaja con tu cron `/api/cron/recordatorios` usando `contarPeriodos` y `metasVigentes`.
-- Sin modo oscuro (el panel de Neife es claro). Si lo quieres, bastan variables en `app/crm.css`.
-- La búsqueda de clientes se hace en el servidor ya descifrada (los nombres están cifrados), por eso no usa índice.
+---
 
-## 10. Pruebas
+## 7. Cómo se calculan las cosas
 
-```bash
-TEST_DATABASE_URL=postgres://usuario:clave@localhost:5432/neife npm test
-```
+- **Semana:** lunes a domingo, hora de Chile (`America/Santiago`).
+- **Indicadores:** se cuentan desde el libro de eventos `crm_eventos` (una fila por hecho, una sola vez por cliente donde corresponde). Borrar un registro corrige los períodos pasados.
+- **Cita «realizada»:** crea el registro en el historial y suma a los indicadores. Si la devuelves a «pendiente», se borra ese registro.
+- **% de avance:** `lib/crm/progreso.ts`. Pesa: contacto, materia, comuna, asesoría hecha, requisitos listos, fecha de hito, próximo paso definido, conformidad y derivación (según la etapa). Los umbrales (65 % / 85 %) están ahí; cámbialos si quieres.
+- **Segmentos de «Personas» en Planificación:** `SEGMENTOS_PLAN` en `catalogo.ts`; las reglas, en `servicio-planificacion.ts`.
+- **Gestiones abiertas:** `GESTIONES` en `catalogo.ts` (título, qué es, qué hacer, plantilla sugerida).
 
-Las 14 pruebas del CRM cubren: semana lunes–domingo y hora de Chile, cifrado de datos, aislamiento entre abogados, conteos (asesorías vs clientes distintos), hitos contados una vez, corrección al borrar, metas con valor base y arrastre, tareas/grupos/planes, importación sin duplicados y RLS activado. Usan un esquema temporal que se borra al terminar.
+### Cambios típicos
+| Quiero… | Dónde |
+|---|---|
+| Otro indicador o meta | `METRICAS` en `lib/crm/catalogo.ts` |
+| Textos de plantillas, consejos o guía | `lib/crm/contenido.ts` |
+| Requisitos sugeridos por materia | `PASOS_POR_MATERIA` en `catalogo.ts` |
+| Colores del calendario/mapa | `crm.css` y `COLOR_ETAPA` en `components/crm/leaflet.ts` |
+| Horario visible de la agenda | `H_INI` / `H_FIN` en `components/crm/Calendario.tsx` |
+
+---
+
+## 8. Pasos manuales (si el instalador no reconoce un archivo)
+
+1. **Migración:** crea una migración Prisma nueva con los cambios incrementales de la sección v2 de `db/crm.sql`; no ejecutes todo ese archivo como migración porque incluye también las tablas v1.
+2. **`next.config.mjs`:** en la CSP, `img-src 'self' data: https://tile.openstreetmap.org` y `connect-src 'self' https://nominatim.openstreetmap.org`; en Permissions-Policy, `geolocation=(self)`.
+3. **Panel:** copia `instalacion/panel-layout.tsx` a `app/(panel)/panel/layout.tsx` y `instalacion/panel-page.tsx` a `app/(panel)/panel/page.tsx`.
+4. `npm install leaflet@^1.9.4 && npm install -D @types/leaflet`, y luego `npm run db:migrate`.
+
+## 9. Problemas frecuentes
+
+| Síntoma | Causa y solución |
+|---|---|
+| «relation crm_citas does not exist» | Ejecuta `npm run db:migrate` y reinicia. |
+| El mapa se ve gris | Sin internet o CSP sin `tile.openstreetmap.org` (revisa `next.config.mjs`; la CSP solo rige en producción). |
+| El menú antiguo sigue apareciendo | No se copió `instalacion/panel-layout.tsx`; repite el instalador. |
+| Estilos del panel rotos | Falta la clase `app` en el cascarón o no se importa `app/crm.css` en el layout. |
+| Las pruebas no encuentran la base | `TEST_DATABASE_URL=postgres://usuario:clave@localhost:5432/neife npm test` |
+
+## 10. Siguientes pasos sugeridos
+
+Avisos por correo o push (hoy son dentro del panel), exportar informes a PDF con tu membrete (hoy: «Imprimir o guardar PDF» del navegador), y un plazo automático de conservación de datos.
+
+
+## Novedades de la 2.1
+
+Barra superior en todas las pantallas (sin títulos ni subtítulos); filtros con chips, embudo, búsqueda y vistas guardadas (se guardan en tu navegador); agenda con selector de fecha, filtro y vistas Buscar/Citas/Día/Semana/Tareas. Si venías de la 2.0, el instalador borra `/panel/casos` y restaura `/panel`.

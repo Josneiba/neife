@@ -116,3 +116,46 @@ export function haceCuanto(desde: string, hoy: string): string {
   if (m < 12) return m === 1 ? "hace un mes" : `hace ${m} meses`;
   return "hace más de un año";
 }
+
+/* ---------- Horas (v2) ---------- */
+
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+export function esHora(h: unknown): h is string {
+  return typeof h === "string" && HORA.test(h);
+}
+export function horaAMin(h: string): number {
+  const [a, b] = h.split(":").map(Number);
+  return a * 60 + b;
+}
+export function minAHora(m: number): string {
+  const x = Math.max(0, Math.min(24 * 60 - 1, Math.round(m)));
+  return `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+}
+
+/** Fecha y hora actuales en Chile: { fecha: "2026-10-31", hora: "21:09" }. */
+export function ahoraLocal(ahora: Date = new Date()): { fecha: string; hora: string } {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: ZONA, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(ahora)
+    .reduce<Record<string, string>>((acc, x) => ({ ...acc, [x.type]: x.value }), {});
+  return { fecha: `${p.year}-${p.month}-${p.day}`, hora: `${p.hour}:${p.minute}` };
+}
+
+/** «sáb. 31 oct.» */
+export function fechaCorta(f: string): string {
+  return fmt({ weekday: "short", day: "numeric", month: "short" }, f);
+}
+/** «lun», «mar»… */
+export function diaSemanaCorto(f: string): string {
+  return fmt({ weekday: "short" }, f);
+}
+export function numeroDia(f: string): number {
+  return Number(f.slice(8, 10));
+}
+/** «OCT» */
+export function mesCortoMayus(f: string): string {
+  return fmt({ month: "short" }, f).toUpperCase();
+}
+/** «31 de octubre de 2026» */
+export function fechaLarga(f: string): string {
+  return new Intl.DateTimeFormat("es-CL", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).format(aUTC(f));
+}

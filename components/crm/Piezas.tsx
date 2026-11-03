@@ -75,3 +75,32 @@ export function NavPeriodo({ base, periodo, inicio, extra }: { base: string; per
 export function Vacio({ children }: { children: React.ReactNode }) {
   return <p className="crm-vacio">{children}</p>;
 }
+
+/** Pestañas de una pantalla (Perfil / Progreso / Línea de tiempo…). */
+export function Pestanas({ items, etiqueta = "Secciones" }: { items: { href: string; texto: string; activa: boolean }[]; etiqueta?: string }) {
+  return (
+    <div className="crm-pestanas" role="tablist" aria-label={etiqueta}>
+      {items.map((i) => (
+        <Link key={i.href} href={i.href} role="tab" aria-selected={i.activa} className={i.activa ? "activa" : undefined}>
+          {i.texto}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function BarraProgreso({ pct, etiqueta }: { pct: number; etiqueta: string }) {
+  return (
+    <span className="crm-progreso" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={etiqueta}>
+      <span style={{ width: `${pct}%` }} />
+    </span>
+  );
+}
+
+export function Estrellas({ n }: { n: number }) {
+  return (
+    <span className="crm-estrellas" role="img" aria-label={n > 0 ? `${n} de 5 estrellas` : "Sin opinión"}>
+      {n > 0 ? "★".repeat(n) + "☆".repeat(5 - n) : "☆☆☆☆☆"}
+    </span>
+  );
+}

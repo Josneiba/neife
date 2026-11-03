@@ -4,6 +4,8 @@ import { requerirAbogado } from "@/lib/guards";
 import { HOME_MENSUAL, HOME_SEMANAL } from "@/lib/crm/catalogo";
 import { etiquetaPeriodo, nombreMes } from "@/lib/crm/fechas";
 import { listarGrupos, resumenInicio } from "@/lib/crm/servicio";
+import { contadoresGestion } from "@/lib/crm/servicio-avisos";
+import { BarraApp, IconoBarra } from "@/components/panel/BarraApp";
 import { eliminarGrupoAccion, moverGrupoAccion } from "@/lib/acciones/crm";
 import { MetaHoy, MetaMes, TarjetaIndicador } from "@/components/crm/Indicadores";
 import { Baldosa, Seccion, Vacio } from "@/components/crm/Piezas";
@@ -16,24 +18,16 @@ export const dynamic = "force-dynamic";
 
 export default async function InicioCrm() {
   const u = await requerirAbogado();
-  const [r, grupos] = await Promise.all([resumenInicio(u.id), listarGrupos(u.id)]);
+  const [r, grupos, c] = await Promise.all([resumenInicio(u.id), listarGrupos(u.id), contadoresGestion(u.id)]);
   const { semana, mes, abiertos } = r;
   const semanales = HOME_SEMANAL.filter((c) => c !== "consultas_nuevas");
 
   return (
     <>
-      <header className="p-cab">
-        <div className="p-cab-izq">
-          <h1>Inicio</h1>
-          <span className="p-sub">Tus clientes y tus metas</span>
-        </div>
-        <Link href="/panel/crm/clientes" className="btn btn-secundario btn-chico">
-          <IconoCrm nombre="cliente" tam={16} /> Ver clientes
-        </Link>
-      </header>
+      <BarraApp titulo="Inicio" acciones={<><IconoBarra href="/panel/crm/buscar" icono="buscar" etiqueta="Buscar" /><IconoBarra href="/panel/crm/notificaciones" icono="campana" etiqueta="Notificaciones" /></>} />
 
       <div className="crm-pagina">
-        <Seccion titulo="Indicadores clave semanales" enlace={{ href: "/panel/crm/metas", texto: "Ver todos" }} id="semanales">
+        <Seccion titulo="Indicadores clave semanales" enlace={{ href: "/panel/crm/planificacion?t=indicadores", texto: "Ver todos" }} id="semanales">
           <p className="crm-periodo">{etiquetaPeriodo("semana", semana.inicio)}</p>
           <div className="crm-kpis">
             <TarjetaIndicador
@@ -63,7 +57,7 @@ export default async function InicioCrm() {
           </p>
         </Seccion>
 
-        <Seccion titulo="Indicadores mensuales" enlace={{ href: `/panel/crm/metas?p=mes&d=${mes.inicio}`, texto: "Ver todos" }} id="mensuales">
+        <Seccion titulo="Indicadores mensuales" enlace={{ href: "/panel/crm/planificacion?t=indicadores&p=mes", texto: "Ver todos" }} id="mensuales">
           <p className="crm-periodo">{etiquetaPeriodo("mes", mes.inicio)}</p>
           <div className="crm-kpis">
             {HOME_MENSUAL.map((c) => (
@@ -89,35 +83,35 @@ export default async function InicioCrm() {
 
         <Seccion titulo="Gestiones abiertas" id="abiertas">
           <div className="crm-baldosas">
-            <Baldosa href="/panel/crm/clientes?f=hito_proximo" icono="calendario-ok" texto="Citas próximas" n={abiertos.citas} />
-            <Baldosa href="/panel/crm/clientes?f=referidos" icono="usuarios" texto="Referidos" n={abiertos.referidos} />
-            <Baldosa href="/panel/crm/clientes?e=con_hito" icono="firma" texto="Mandatos por firmar" n={abiertos.mandatosPendientes} />
-            <Baldosa href="/panel/crm/tareas" icono="tarea" texto="Tareas" n={abiertos.tareas} />
-            <Baldosa href="/panel/crm/clientes?f=vencidos" icono="alerta" texto="Sin seguimiento" n={abiertos.vencidos} />
-            <Baldosa href="/panel/crm/notas" icono="nota" texto="Notas rápidas" n={abiertos.notas} />
-            <Baldosa href="/panel/crm/clientes?f=por_contactar" icono="mensaje" texto="Por contactar" n={abiertos.porContactar} />
-            <Baldosa href="/panel/crm/clientes?f=postventa" icono="escudo" texto="Postventa" n={abiertos.postventa} />
-            <Baldosa href="/panel/crm/plantillas" icono="bombilla" texto="Consejos" />
+            <Baldosa href="/panel/crm/gestion/citas_proximas" icono="calendario-ok" texto="Citas próximas" n={c.citas_proximas} />
+            <Baldosa href="/panel/crm/gestion/referidos" icono="usuarios" texto="Referidos" n={c.referidos} />
+            <Baldosa href="/panel/crm/gestion/mandatos_por_firmar" icono="firma" texto="Mandatos por firmar" n={c.mandatos_por_firmar} />
+            <Baldosa href="/panel/crm/tareas" icono="tarea" texto="Tareas" n={c.tareas} />
+            <Baldosa href="/panel/crm/gestion/sin_seguimiento" icono="alerta" texto="Sin seguimiento" n={c.sin_seguimiento} />
+            <Baldosa href="/panel/crm/notas" icono="nota" texto="Notas rápidas" n={c.notas} />
+            <Baldosa href="/panel/crm/gestion/por_contactar" icono="mensaje" texto="Por contactar" n={c.por_contactar} />
+            <Baldosa href="/panel/crm/gestion/postventa" icono="escudo" texto="Postventa" n={c.postventa} />
+            <Baldosa href="/panel/crm/consejos" icono="bombilla" texto="Consejos" />
           </div>
         </Seccion>
 
         <Seccion titulo="Ayudas" id="ayudas">
           <div className="crm-baldosas">
-            <Baldosa href="/panel/crm/zonas" icono="zona" texto="Notas de zona" />
+            <Baldosa href="/panel/crm/zonas?abrir=notas" icono="zona" texto="Notas de zona" />
             <Baldosa href="/panel/biblioteca" icono="libro" texto="Biblioteca legal" />
             <Baldosa href="/panel/crm/plantillas" icono="mensaje" texto="Plantillas de mensajes" />
             <Baldosa href="/panel/informes" icono="documento" texto="Informes de caso" />
             <Baldosa href="/panel" icono="maletin" texto="Mis casos" />
-            <Baldosa href="/panel/crm/plantillas#primera-asesoria" icono="birrete" texto="Guía de primera asesoría" />
+            <Baldosa href="/panel/crm/guia" icono="birrete" texto="Guía de primera asesoría" />
           </div>
         </Seccion>
 
         <Seccion titulo="Filtros rápidos" id="filtros">
           <div className="crm-baldosas">
-            <Baldosa href="/panel/crm/clientes?f=referidos" icono="usuario-mas" texto="Nuevos referidos" />
-            <Baldosa href="/panel/crm/clientes?f=hito_proximo" icono="calendario-ok" texto="Hito en 14 días" />
+            <Baldosa href="/panel/crm/gestion/referidos" icono="usuario-mas" texto="Nuevos referidos" />
+            <Baldosa href="/panel/crm/gestion/hitos_14" icono="calendario-ok" texto="Hito en 14 días" />
             <Baldosa href="/panel/crm/informes" icono="informe" texto="Informe de avance" />
-            <Baldosa href="/panel/crm/clientes?f=nuevos_mandantes" icono="firma" texto="Nuevos mandantes" />
+            <Baldosa href="/panel/crm/gestion/nuevos_mandantes" icono="firma" texto="Nuevos mandantes" />
           </div>
         </Seccion>
 

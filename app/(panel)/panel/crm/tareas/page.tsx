@@ -7,6 +7,7 @@ import { alternarTareaAccion, eliminarTareaAccion } from "@/lib/acciones/crm";
 import { FormTarea } from "@/components/crm/AccionesRapidas";
 import { IconoCrm } from "@/components/crm/IconosCrm";
 import { Seccion, Vacio } from "@/components/crm/Piezas";
+import { BarraApp, IconoBarra } from "@/components/panel/BarraApp";
 
 export const metadata: Metadata = { title: "CRM · Tareas" };
 export const dynamic = "force-dynamic";
@@ -20,15 +21,7 @@ export default async function Tareas({ searchParams }: { searchParams: Promise<R
 
   return (
     <>
-      <header className="p-cab">
-        <div className="p-cab-izq">
-          <h1>Tareas</h1>
-          <span className="p-sub">{tareas.filter((t) => !t.hecha).length} pendientes</span>
-        </div>
-        <Link href={verHechas ? "/panel/crm/tareas" : "/panel/crm/tareas?hechas=1"} className="btn btn-secundario btn-chico">
-          {verHechas ? "Ocultar hechas" : "Mostrar hechas"}
-        </Link>
-      </header>
+      <BarraApp titulo="Tareas" subtitulo={`${tareas.filter((t) => !t.hecha).length}`} acciones={<IconoBarra href={verHechas ? "/panel/crm/tareas" : "/panel/crm/tareas?hechas=1"} icono={verHechas ? "check" : "cuadro-check"} etiqueta={verHechas ? "Ocultar hechas" : "Mostrar hechas"} />} />
       <div className="crm-pagina">
         <Seccion titulo="Nueva tarea" id="nueva">
           <FormTarea personas={personas.map((p) => ({ id: p.id, nombre: p.nombre }))} hoy={hoy} />

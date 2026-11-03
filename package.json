@@ -39,7 +39,8 @@
     "resend": "^6.34.1",
     "snowball-stemmers": "^0.6.0",
     "unpdf": "^1.9.0",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
@@ -49,6 +50,7 @@
     "@types/react-dom": "^19.3.0",
     "prisma": "^7.10.1",
     "tsx": "^4.23.15",
-    "typescript": "5.9"
+    "typescript": "5.9",
+    "@types/leaflet": "^1.9.12"
   }
 }

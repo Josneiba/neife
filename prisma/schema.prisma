@@ -48,6 +48,7 @@ model Perfiles {
 model Solicitudes {
   id                  Int           @id @default(autoincrement())
   codigo              String        @unique
+  codigo_seguimiento  String        @unique(map: "idx_solicitudes_codigo_seguimiento") @default(dbgenerated("('CASO-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)) || '-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)) || '-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)))"))
   asesor_id           Int
   cliente_id          Int?
   materia             String

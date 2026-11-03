@@ -1,121 +1,200 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requerirAbogado } from "@/lib/guards";
-import { ETAPAS_CRM, METRICAS } from "@/lib/crm/catalogo";
-import { etiquetaPeriodo, hoyLocal, inicioPeriodo, sumarDias, sumarPeriodos } from "@/lib/crm/fechas";
-import { conteoPorEtapa, contarPeriodos, embudo, historial, metasVigentes } from "@/lib/crm/servicio";
-import { porcentaje } from "@/lib/crm/vista";
-import { GraficoVerlauf } from "@/components/crm/GraficoVerlauf";
-import { Seccion } from "@/components/crm/Piezas";
+import { METRICAS, nombreEtapaCrm, nombreResultadoDerivacion } from "@/lib/crm/catalogo";
+import { etiquetaPeriodo, fechaDMA, hoyLocal, inicioPeriodo, sumarPeriodos } from "@/lib/crm/fechas";
+import { listarPersonas } from "@/lib/crm/servicio";
+import { evaluarCartera, listarDerivaciones, montoAcordado, resumenPorColega } from "@/lib/crm/servicio-seguimiento";
+import { resumenMensual } from "@/lib/crm/servicio-informes";
+import { nombreMateria } from "@/lib/materias";
+import { BarraApp } from "@/components/panel/BarraApp";
+import { BarraProgreso, Estrellas, Pestanas, Seccion, Vacio } from "@/components/crm/Piezas";
 
 export const metadata: Metadata = { title: "CRM · Informes" };
 export const dynamic = "force-dynamic";
 
-export default async function Informes() {
+const pesos = (n: number) => `$${n.toLocaleString("es-CL")}`;
+
+export default async function Informes({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const u = await requerirAbogado();
+  const sp = await searchParams;
+  const t = ["derivaciones", "satisfaccion", "mes"].includes(sp.t ?? "") ? (sp.t as string) : "casos";
   const hoy = hoyLocal();
-  const mesActual = inicioPeriodo("mes", hoy);
-  const meses = Array.from({ length: 6 }, (_, k) => sumarPeriodos("mes", mesActual, k - 5));
-  const [conteos, metasPorMes, emb, etapas, hMandatos, hClientes] = await Promise.all([
-    contarPeriodos(u.id, "mes", meses),
-    Promise.all(meses.map((m) => metasVigentes(u.id, "mes", m))),
-    embudo(u.id, sumarDias(hoy, -90)),
-    conteoPorEtapa(u.id),
-    historial(u.id, "mandatos", "mes", mesActual, 6),
-    historial(u.id, "consultas_nuevas", "mes", mesActual, 6),
-  ]);
-  const pasos = [
-    { n: "Clientes nuevos", v: emb.total },
-    { n: "Recibieron asesoría", v: emb.asesoria },
-    { n: "Con fecha de hito", v: emb.hito },
-    { n: "Firmaron mandato", v: emb.mandato },
-    { n: "Conectados con abogado", v: emb.derivado },
-    { n: "Casos resueltos", v: emb.resuelto },
+  const pestanas = [
+    { href: "/panel/crm/informes", texto: "Casos", activa: t === "casos" },
+    { href: "/panel/crm/informes?t=derivaciones", texto: "Derivaciones", activa: t === "derivaciones" },
+    { href: "/panel/crm/informes?t=satisfaccion", texto: "Conformidad", activa: t === "satisfaccion" },
+    { href: "/panel/crm/informes?t=mes", texto: "Mes", activa: t === "mes" },
   ];
-  const mensuales = METRICAS.filter((m) => m.periodos.includes("mes"));
-  const totalClientes = Object.values(etapas).reduce((a, b) => a + b, 0);
+
+  let cuerpo: React.ReactNode = null;
+
+  if (t === "casos") {
+    const cartera = (await evaluarCartera(u.id, hoy)).sort((a, b) => b.ev.pct - a.ev.pct);
+    cuerpo = (
+      <Seccion titulo={`Casos (${cartera.length})`}>
+        {cartera.length === 0 ? (
+          <Vacio>No hay casos abiertos.</Vacio>
+        ) : (
+          <ul className="crm-informes-lista">
+            {cartera.map(({ p, ev }) => (
+              <li key={p.id}>
+                <div>
+                  <strong>{p.nombre}</strong>
+                  <small>
+                    {nombreMateria(p.materia)} · {nombreEtapaCrm(p.etapa)}
+                  </small>
+                  <BarraProgreso pct={ev.pct} etiqueta={`Avance de ${p.nombre}`} />
+                  <small>
+                    {ev.pct} % · {ev.listo ? "Listo para mostrar al cliente" : ev.casiListo ? "Casi listo" : `Falta: ${ev.faltantes[0]?.texto ?? ev.siguiente}`}
+                  </small>
+                  <small>Siguiente paso: <strong>{ev.siguiente}</strong></small>
+                </div>
+                <div className="crm-acciones-fila">
+                  <Link href={`/panel/crm/informes/${p.id}`} className="btn btn-primario btn-chico">Ver informe</Link>
+                  <Link href={`/panel/crm/clientes/${p.id}?t=progreso`} className="btn btn-secundario btn-chico">Completar</Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Seccion>
+    );
+  } else if (t === "derivaciones") {
+    const lista = await listarDerivaciones(u.id);
+    const porColega = resumenPorColega(lista);
+    cuerpo = (
+      <>
+        <Seccion titulo={`Asesorías con colega (${lista.length})`}>
+          {lista.length === 0 ? (
+            <Vacio>Sin derivaciones.</Vacio>
+          ) : (
+            <ul className="crm-informes-lista">
+              {lista.map((v) => (
+                <li key={v.id}>
+                  <div>
+                    <strong>{v.persona || "Cliente"}</strong> → <strong>{v.colega}</strong>
+                    <small>
+                      {fechaDMA(v.fecha)} · {nombreResultadoDerivacion(v.resultado)}
+                    </small>
+                    <small>
+                      Comisión: {v.comisionTipo === "ninguna" ? "sin comisión" : v.comisionTipo === "porcentaje" ? `${v.comisionValor} %` : pesos(v.comisionValor)} ({v.comisionEstado.replace("_", " ")}
+                      {v.comisionEstado === "cobrada" ? `, cobrado ${pesos(v.comisionCobrada)}` : montoAcordado(v) ? `, ${pesos(montoAcordado(v))}` : ""})
+                    </small>
+                    {v.trato ? <small>Trato: {v.trato}</small> : null}
+                    <small>
+                      Conformidad del cliente: <Estrellas n={v.satisfaccion} />
+                    </small>
+                  </div>
+                  <Link href={`/panel/crm/clientes/${v.personaId}?t=progreso#derivacion`} className="btn btn-secundario btn-chico">Abrir</Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Seccion>
+        {porColega.length > 0 ? (
+          <Seccion titulo="Por colega">
+            <div className="crm-tabla-envoltura">
+              <table className="crm-tabla">
+                <thead>
+                  <tr>
+                    <th scope="col">Colega</th>
+                    <th scope="col">Derivados</th>
+                    <th scope="col">Aceptados</th>
+                    <th scope="col">Resueltos</th>
+                    <th scope="col">Conformidad</th>
+                    <th scope="col">Por cobrar</th>
+                    <th scope="col">Cobrado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {porColega.map((c) => (
+                    <tr key={c.colega}>
+                      <th scope="row">{c.colega}</th>
+                      <td>{c.derivaciones}</td>
+                      <td>{c.aceptadas}</td>
+                      <td>{c.resueltas}</td>
+                      <td>{c.satisfaccion ?? "—"}</td>
+                      <td>{pesos(c.comisionPorCobrar)}</td>
+                      <td>{pesos(c.comisionCobrada)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Seccion>
+        ) : null}
+      </>
+    );
+  } else if (t === "satisfaccion") {
+    const todos = await listarPersonas(u.id, {});
+    const con = todos.filter((p) => p.satisfaccion > 0).sort((a, b) => b.satisfaccion - a.satisfaccion);
+    const sin = todos.filter((p) => p.satisfaccion === 0 && ["mandato", "cerrado", "derivado"].includes(p.etapa));
+    const prom = con.length ? Math.round((con.reduce((a, p) => a + p.satisfaccion, 0) / con.length) * 10) / 10 : null;
+    cuerpo = (
+      <>
+        <Seccion titulo={`Conformidad de tus clientes${prom ? ` · promedio ${prom}` : ""}`}>
+          {con.length === 0 ? (
+            <Vacio>Sin opiniones registradas.</Vacio>
+          ) : (
+            <ul className="crm-informes-lista">
+              {con.map((p) => (
+                <li key={p.id}>
+                  <div>
+                    <Link href={`/panel/crm/clientes/${p.id}?t=progreso#conformidad`}><strong>{p.nombre}</strong></Link> <Estrellas n={p.satisfaccion} />
+                    {p.satisfaccionNota ? <small>{p.satisfaccionNota}</small> : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Seccion>
+        {sin.length > 0 ? (
+          <Seccion titulo="Falta preguntar">
+            <ul className="lista-enlaces">
+              {sin.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/panel/crm/plantillas?pl=opinion&p=${p.id}`}>{p.nombre} <small>pedir opinión</small></Link>
+                </li>
+              ))}
+            </ul>
+          </Seccion>
+        ) : null}
+      </>
+    );
+  } else {
+    const mesActual = inicioPeriodo("mes", hoy);
+    const m = /^\d{4}-\d{2}-01$/.test(sp.m ?? "") ? (sp.m as string) : mesActual;
+    const r = await resumenMensual(u.id, m);
+    const mensuales = METRICAS.filter((x) => x.periodos.includes("mes"));
+    cuerpo = (
+      <Seccion titulo={etiquetaPeriodo("mes", m)}>
+        <div className="crm-acciones-fila">
+          <Link href={`/panel/crm/informes?t=mes&m=${sumarPeriodos("mes", m, -1)}`} className="btn btn-secundario btn-chico">← Mes anterior</Link>
+          {m < mesActual ? <Link href={`/panel/crm/informes?t=mes&m=${sumarPeriodos("mes", m, 1)}`} className="btn btn-secundario btn-chico">Mes siguiente →</Link> : null}
+        </div>
+        <ul className="crm-datos">
+          {mensuales.map((def) => (
+            <li key={def.clave}>
+              {def.nombre}: <strong>{r.real[def.clave] ?? 0}</strong> de {r.meta[def.clave] ?? 0}
+            </li>
+          ))}
+          <li>Derivaciones del mes: <strong>{r.derivaciones.n}</strong> ({r.derivaciones.aceptadas} aceptadas) · comisión acordada {pesos(r.derivaciones.comisionAcordada)} · cobrada {pesos(r.derivaciones.comisionCobrada)}</li>
+          <li>Conformidad: {r.satisfaccion.promedio ?? "sin datos"} ({r.satisfaccion.n} opiniones)</li>
+        </ul>
+        {r.porOrigen.length ? <p>Clientes nuevos por origen: {r.porOrigen.map((o) => `${o.nombre} (${o.n})`).join(", ")}</p> : null}
+        {r.porMateria.length ? <p>Por materia: {r.porMateria.map((o) => `${o.nombre} (${o.n})`).join(", ")}</p> : null}
+        <p><Link href="/panel/crm/planificacion?t=indicadores&p=mes" className="crm-enlace-boton">Ver los gráficos en Indicadores clave</Link></p>
+      </Seccion>
+    );
+  }
 
   return (
     <>
-      <header className="p-cab">
-        <div className="p-cab-izq">
-          <h1>Informes</h1>
-          <span className="p-sub">Cómo vas, mes a mes</span>
-        </div>
-      </header>
+      <BarraApp titulo="Informes" />
       <div className="crm-pagina">
-        <Seccion titulo="Metas de los últimos 6 meses" id="meses">
-          <div className="crm-tabla-envoltura">
-            <table className="crm-tabla">
-              <thead>
-                <tr>
-                  <th scope="col">Indicador</th>
-                  {meses.map((m) => (
-                    <th key={m} scope="col">
-                      {etiquetaPeriodo("mes", m).split(" ")[0]}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mensuales.map((def) => (
-                  <tr key={def.clave}>
-                    <th scope="row">{def.corto}</th>
-                    {meses.map((m, k) => {
-                      const real = conteos[m][def.clave];
-                      const meta = metasPorMes[k][def.clave];
-                      const ok = meta > 0 && real >= meta;
-                      return (
-                        <td key={m} className={ok ? "ok" : real === 0 && meta > 0 ? "cero" : undefined}>
-                          {real}
-                          <span>/{meta}</span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Seccion>
-
-        <Seccion titulo="Embudo de los últimos 90 días" id="embudo">
-          <ul className="crm-embudo">
-            {pasos.map((p) => (
-              <li key={p.n}>
-                <span className="crm-embudo-nombre">{p.n}</span>
-                <span className="crm-embudo-barra" aria-hidden="true">
-                  <i style={{ width: `${porcentaje(p.v, Math.max(emb.total, 1))}%` }} />
-                </span>
-                <span className="crm-embudo-valor">
-                  {p.v}
-                  <small>{emb.total > 0 ? `${Math.round((p.v / emb.total) * 100)}%` : "—"}</small>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="crm-ayuda">Cuenta a los clientes que entraron en los últimos 90 días y cuántos llegaron a cada paso (hasta hoy).</p>
-        </Seccion>
-
-        <Seccion titulo="Tus clientes hoy" id="etapas">
-          <ul className="crm-embudo">
-            {ETAPAS_CRM.map((e) => (
-              <li key={e.clave}>
-                <span className="crm-embudo-nombre">{e.nombre}</span>
-                <span className="crm-embudo-barra" aria-hidden="true">
-                  <i style={{ width: `${porcentaje(etapas[e.clave], Math.max(totalClientes, 1))}%` }} />
-                </span>
-                <span className="crm-embudo-valor">{etapas[e.clave]}</span>
-              </li>
-            ))}
-          </ul>
-        </Seccion>
-
-        <Seccion titulo="Mandatos firmados por mes" id="g1">
-          <GraficoVerlauf puntos={hMandatos} periodo="mes" titulo="Mandatos firmados por mes" />
-        </Seccion>
-        <Seccion titulo="Clientes nuevos por mes" id="g2">
-          <GraficoVerlauf puntos={hClientes} periodo="mes" titulo="Clientes nuevos por mes" />
-        </Seccion>
+        <Pestanas etiqueta="Tipo de informe" items={pestanas} />
+        {cuerpo}
       </div>
     </>
   );

@@ -775,6 +775,18 @@
 
 .ico-movil { display: none; }
 @media (max-width: 960px) { .ico-movil { display: inline-flex; flex: none; opacity: .75; } .p-filtros { scrollbar-width: none; } }
+@media (max-width: 600px) {
+  .p-filtros {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .p-filtros a {
+    justify-content: space-between;
+    min-width: 0;
+    padding: 8px 10px;
+  }
+}
 
 /* Teléfono: toda la ficha del caso es tocable y los controles tienen tamaño cómodo */
 @media (max-width: 960px) {

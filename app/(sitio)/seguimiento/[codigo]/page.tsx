@@ -51,14 +51,19 @@ export default async function Seguimiento({
     <div className="contenedor pagina-estrecha">
       {sp.nueva ? (
         <div className="aviso aviso-ok" role="status" style={{ marginBottom: 24 }}>
-          <strong>Solicitud enviada.</strong> Guarda esta dirección: es la forma de ver el avance si no tienes cuenta.
-          <div style={{ marginTop: 10 }}>
+          <strong>Solicitud enviada.</strong> Guarda tu código único y el enlace privado de seguimiento.
+          <div className="botones" style={{ marginTop: 10 }}>
+            <BotonCopiar texto="Copiar código" valor={s.codigoSeguimiento} />
             <BotonCopiar />
           </div>
+          <p className="ayuda" style={{ marginTop: 10 }}>Conserva también el enlace privado de esta página para consultar el avance.</p>
         </div>
       ) : null}
 
       <h1>Solicitud {folio(s.codigo)}</h1>
+      <p className="ayuda" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
+        Código de seguimiento: <strong>{s.codigoSeguimiento}</strong>
+      </p>
       <p className="ayuda" style={{ marginTop: 8 }}>
         {nombreMateria(s.materia)} · enviada el {fechaLarga(s.creadoEn)}
         {s.estado !== "rechazada" ? ` · avance ${avance(s.estado)} de ${TOTAL_ETAPAS}` : ""}

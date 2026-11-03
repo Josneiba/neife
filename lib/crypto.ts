@@ -58,3 +58,8 @@ export function descifrarSeguro(guardado: string, contexto: string): string {
 export function codigoAleatorio(): string {
   return randomBytes(16).toString("base64url");
 }
+
+export function codigoCaso(tipo: "CASO" | "CRM"): string {
+  const codigo = randomBytes(6).toString("hex").toUpperCase();
+  return `${tipo}-${codigo.slice(0, 4)}-${codigo.slice(4, 8)}-${codigo.slice(8)}`;
+}

@@ -95,6 +95,7 @@ export async function slugLibre(nombre: string): Promise<string> {
 export type Solicitud = {
   id: number;
   codigo: string;
+  codigoSeguimiento: string;
   asesorId: number;
   clienteId: number | null;
   materia: string;
@@ -123,6 +124,7 @@ function aSolicitud(f: Fila): Solicitud {
   return {
     id: Number(f.id),
     codigo: String(f.codigo),
+    codigoSeguimiento: String(f.codigo_seguimiento),
     asesorId: Number(f.asesor_id),
     clienteId: f.cliente_id === null ? null : Number(f.cliente_id),
     materia: String(f.materia),

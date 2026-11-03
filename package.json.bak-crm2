@@ -1,0 +1,54 @@
+{
+  "name": "neife",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Neife: sitio de la empresa y plataforma de asesoría de orientación legal.",
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "dev": "next dev",
+    "build": "prisma migrate deploy && prisma generate && next build",
+    "db:migrate": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:setup": "tsx scripts/db-setup.ts",
+    "start": "next start",
+    "crear-admin": "tsx scripts/crear-admin.ts",
+    "demo": "tsx scripts/demo.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "cambiar-clave": "tsx scripts/cambiar-clave.ts",
+    "limpiar": "tsx scripts/limpiar.ts",
+    "biblioteca": "tsx scripts/biblioteca.ts",
+    "demo:crm": "tsx scripts/demo-crm.ts"
+  },
+  "engines": {
+    "node": ">=20.19 <25"
+  },
+  "dependencies": {
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.9",
+    "fast-xml-parser": "^5.11.2",
+    "jose": "^6.2.12",
+    "next": "^16.4.2",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "resend": "^6.34.1",
+    "snowball-stemmers": "^0.6.0",
+    "unpdf": "^1.9.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pdfkit": "^0.17.6",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "prisma": "^7.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "5.9"
+  }
+}

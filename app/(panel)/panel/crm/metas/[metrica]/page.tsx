@@ -11,6 +11,7 @@ import { GraficoVerlauf } from "@/components/crm/GraficoVerlauf";
 import { NavPeriodo, PestanasPeriodo, Seccion, Vacio } from "@/components/crm/Piezas";
 import { FilaPersona } from "@/components/crm/FilaPersona";
 import { IconoCrm } from "@/components/crm/IconosCrm";
+import { BarraApp, IconoBarra } from "@/components/panel/BarraApp";
 
 export const metadata: Metadata = { title: "CRM · Editar meta" };
 export const dynamic = "force-dynamic";
@@ -48,14 +49,7 @@ export default async function EditarMeta({
 
   return (
     <>
-      <header className="p-cab">
-        <div className="p-cab-izq">
-          <Link href={`/panel/crm/metas?p=${periodo}&d=${inicio}`} className="crm-volver" aria-label="Volver a indicadores">
-            <IconoCrm nombre="flecha-izq" tam={22} />
-          </Link>
-          <h1>Editar meta</h1>
-        </div>
-      </header>
+      <BarraApp titulo="Editar meta" volver={`/panel/crm/metas?p=${periodo}&d=${inicio}`} />
 
       <div className="crm-pagina">
         {def.periodos.length > 1 ? <PestanasPeriodo base={base} periodo={periodo} inicio={inicio} permitidos={def.periodos} /> : null}

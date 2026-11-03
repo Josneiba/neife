@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   crearPersonaAccion,
   crearTareaAccion,
@@ -8,94 +8,10 @@ import {
 } from "@/lib/acciones/crm";
 import { MATERIAS } from "@/lib/materias";
 import { CANALES, ORIGENES_CRM } from "@/lib/crm/catalogo";
-import { IconoCrm, type NombreIconoCrm } from "./IconosCrm";
+import { SelectorUbicacion } from "./SelectorUbicacion";
 import { MensajeForm, useFormulario } from "./useFormulario";
 
 type Opcion = { id: number; nombre: string };
-type Forma = "cliente" | "asesoria" | "reunion" | "contacto" | "tarea";
-
-const ACCIONES: { forma: Forma; texto: string; icono: NombreIconoCrm }[] = [
-  { forma: "reunion", texto: "Reunión o audiencia", icono: "balanza" },
-  { forma: "tarea", texto: "Tarea", icono: "tarea" },
-  { forma: "cliente", texto: "Cliente", icono: "usuario-mas" },
-  { forma: "asesoria", texto: "Asesoría", icono: "birrete" },
-  { forma: "contacto", texto: "Contacto", icono: "mensaje" },
-];
-
-const TITULOS: Record<Forma, string> = {
-  cliente: "Nuevo cliente",
-  asesoria: "Registrar asesoría",
-  reunion: "Registrar reunión o audiencia",
-  contacto: "Registrar contacto",
-  tarea: "Nueva tarea",
-};
-
-/**
- * Botón «+» flotante con las 5 acciones más usadas (como la referencia).
- * Cada una abre una hoja con un formulario corto; Enter guarda y queda listo para el siguiente.
- */
-export function AccionesRapidas({ personas, hoy }: { personas: Opcion[]; hoy: string }) {
-  const [abierto, setAbierto] = useState(false);
-  const [forma, setForma] = useState<Forma | null>(null);
-
-  useEffect(() => {
-    function tecla(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      setForma(null);
-      setAbierto(false);
-    }
-    window.addEventListener("keydown", tecla);
-    return () => window.removeEventListener("keydown", tecla);
-  }, []);
-
-  return (
-    <>
-      {abierto && !forma ? <button type="button" className="crm-velo" aria-label="Cerrar el menú" onClick={() => setAbierto(false)} /> : null}
-      <div className="crm-fab-zona">
-        {abierto && !forma ? (
-          <ul className="crm-fab-lista" aria-label="Acciones rápidas">
-            {ACCIONES.map((a) => (
-              <li key={a.forma}>
-                <button type="button" className="crm-fab-item" onClick={() => setForma(a.forma)}>
-                  <IconoCrm nombre={a.icono} tam={20} />
-                  {a.texto}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <button
-          type="button"
-          className="crm-fab"
-          aria-expanded={abierto}
-          aria-label={abierto ? "Cerrar acciones rápidas" : "Abrir acciones rápidas"}
-          onClick={() => {
-            setForma(null);
-            setAbierto((a) => !a);
-          }}
-        >
-          <IconoCrm nombre={abierto ? "cerrar" : "mas"} tam={26} />
-        </button>
-      </div>
-
-      {forma ? (
-        <div className="crm-hoja-fondo" onClick={() => setForma(null)}>
-          <div className="crm-hoja" role="dialog" aria-modal="true" aria-label={TITULOS[forma]} onClick={(e) => e.stopPropagation()}>
-            <header>
-              <h2>{TITULOS[forma]}</h2>
-              <button type="button" className="crm-icono-boton" aria-label="Cerrar" onClick={() => setForma(null)}>
-                <IconoCrm nombre="cerrar" tam={20} />
-              </button>
-            </header>
-            {forma === "cliente" ? <FormCliente /> : null}
-            {forma === "tarea" ? <FormTarea personas={personas} hoy={hoy} /> : null}
-            {forma === "asesoria" || forma === "reunion" || forma === "contacto" ? <FormInteraccion forma={forma} personas={personas} hoy={hoy} /> : null}
-          </div>
-        </div>
-      ) : null}
-    </>
-  );
-}
 
 function SelectorPersona({ personas, error }: { personas: Opcion[]; error?: string }) {
   return (
@@ -154,6 +70,7 @@ export function FormCliente() {
         <span>Nota (opcional)</span>
         <input name="nota" className="entrada" maxLength={1000} autoComplete="off" />
       </label>
+      <MasDatos />
       <MensajeForm estado={estado} />
       <button type="submit" className="btn btn-primario" disabled={pendiente}>
         {pendiente ? "Guardando…" : "Agregar cliente"}
@@ -162,7 +79,34 @@ export function FormCliente() {
   );
 }
 
-function FormInteraccion({ forma, personas, hoy }: { forma: "asesoria" | "reunion" | "contacto"; personas: Opcion[]; hoy: string }) {
+/** «+ Referido por», «+ Dirección», «+ Ubicación en el mapa»: datos opcionales que no estorban al agregar rápido. */
+function MasDatos() {
+  const [mapa, setMapa] = useState(false);
+  return (
+    <details className="crm-mas-datos">
+      <summary>+ Más datos (dirección, referido por, ubicación)</summary>
+      <div className="crm-form">
+        <label className="crm-campo">
+          <span>Referido por</span>
+          <input name="referido_por" className="entrada" maxLength={120} autoComplete="off" />
+        </label>
+        <label className="crm-campo">
+          <span>Dirección</span>
+          <input name="direccion" className="entrada" maxLength={200} autoComplete="off" />
+        </label>
+        {mapa ? (
+          <SelectorUbicacion />
+        ) : (
+          <button type="button" className="btn btn-secundario btn-chico" onClick={() => setMapa(true)}>
+            Marcar ubicación en el mapa
+          </button>
+        )}
+      </div>
+    </details>
+  );
+}
+
+export function FormInteraccion({ forma, personas, hoy, personaId }: { forma: "asesoria" | "reunion" | "contacto"; personas: Opcion[]; hoy: string; personaId?: number }) {
   const { estado, enviar, pendiente, ref } = useFormulario(registrarInteraccionAccion);
   const e = estado.errores ?? {};
   return (
@@ -178,7 +122,7 @@ function FormInteraccion({ forma, personas, hoy }: { forma: "asesoria" | "reunio
       ) : (
         <input type="hidden" name="tipo" value={forma} />
       )}
-      <SelectorPersona personas={personas} error={e.persona_id} />
+      {personaId ? <input type="hidden" name="persona_id" value={personaId} /> : <SelectorPersona personas={personas} error={e.persona_id} />}
       <div className="crm-dos">
         <label className="crm-campo">
           <span>Fecha</span>
@@ -214,7 +158,7 @@ function FormInteraccion({ forma, personas, hoy }: { forma: "asesoria" | "reunio
   );
 }
 
-export function FormTarea({ personas, hoy }: { personas: Opcion[]; hoy: string }) {
+export function FormTarea({ personas, hoy, personaId }: { personas: Opcion[]; hoy: string; personaId?: number }) {
   const { estado, enviar, pendiente, ref } = useFormulario(crearTareaAccion);
   const e = estado.errores ?? {};
   return (
@@ -224,17 +168,21 @@ export function FormTarea({ personas, hoy }: { personas: Opcion[]; hoy: string }
         <input name="texto" className="entrada" required maxLength={300} autoComplete="off" autoFocus aria-invalid={e.texto ? true : undefined} placeholder="Ej.: pedir contrato de arriendo" />
       </label>
       <div className="crm-dos">
-        <label className="crm-campo">
-          <span>Cliente (opcional)</span>
-          <select name="persona_id" className="entrada" defaultValue="">
-            <option value="">—</option>
-            {personas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
+        {personaId ? (
+          <input type="hidden" name="persona_id" value={personaId} />
+        ) : (
+          <label className="crm-campo">
+            <span>Cliente (opcional)</span>
+            <select name="persona_id" className="entrada" defaultValue="">
+              <option value="">—</option>
+              {personas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="crm-campo">
           <span>Para el día</span>
           <input type="date" name="vence" className="entrada" min={hoy} />

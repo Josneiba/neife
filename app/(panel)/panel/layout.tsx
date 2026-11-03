@@ -1,17 +1,24 @@
 import "../../panel.css";
+import "../../crm.css";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { usuarioActual } from "@/lib/auth";
 import { salir } from "@/lib/acciones/auth";
 import { contarSolicitudesAsesor } from "@/lib/datos";
 import { Logo } from "@/components/Logo";
-import { NavLateral } from "@/components/NavEnlaces";
 import { Etiqueta } from "@/components/Etiqueta";
-import { Icono } from "@/components/Iconos";
 import { TablasMovil } from "@/components/TablasMovil";
+import { ShellPanel } from "@/components/panel/ShellPanel";
+import { hoyLocal } from "@/lib/crm/fechas";
+import { listarPersonas } from "@/lib/crm/servicio";
+import { avisos } from "@/lib/crm/servicio-avisos";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Marco de todo el panel del abogado (v2): barra delgada con menú de tres rayas, barra inferior
+ * en el celular y botón «+» contextual. El menú lateral fijo de antes ya no ocupa pantalla.
+ */
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const u = await usuarioActual();
   if (!u) redirect("/ingresar?siguiente=/panel");
@@ -47,41 +54,19 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     );
   }
 
-  const conteo = await contarSolicitudesAsesor(u.id);
+  const [conteo, lista, personas] = await Promise.all([contarSolicitudesAsesor(u.id), avisos(u.id), listarPersonas(u.id, { limite: 500 })]);
 
   return (
-    <div className="app">
-      <aside className="lateral">
-        <Logo href="/panel" />
-        <NavLateral
-          raiz="/panel"
-          enlaces={[
-            { href: "/panel", texto: "Casos", icono: "casos", contador: conteo.nueva ?? 0 },
-            { href: "/panel/crm", texto: "CRM", icono: "usuarios" },
-            { href: "/panel/informes", texto: "Informes", icono: "informe" },
-            { href: "/panel/biblioteca", texto: "Biblioteca", icono: "libro" },
-            { href: "/panel/perfil", texto: "Mi perfil", icono: "usuario" },
-          ]}
-        />
-        <div className="lateral-cuenta">
-          <div className="cuenta-datos">
-            <strong>{u.nombre}</strong>
-            {u.email}
-          </div>
-          <Link href="/asesoria" aria-label="Perfil público">
-            <Icono nombre="externo" tam={17} /> <span className="txt">Perfil público</span>
-          </Link>
-          <form action={salir}>
-            <button type="submit" className="boton-enlace" aria-label="Salir">
-              <Icono nombre="salir" tam={17} /> <span className="txt">Salir</span>
-            </button>
-          </form>
-        </div>
-      </aside>
-      <main id="contenido" className="principal">
-        <TablasMovil />
-        {children}
-      </main>
-    </div>
+    <ShellPanel
+      nombre={u.nombre}
+      email={u.email}
+      avisos={lista.filter((a) => a.nivel !== "info").length}
+      casosNuevos={conteo.nueva ?? 0}
+      personas={personas.map((p) => ({ id: p.id, nombre: p.nombre }))}
+      hoy={hoyLocal()}
+    >
+      <TablasMovil />
+      {children}
+    </ShellPanel>
   );
 }

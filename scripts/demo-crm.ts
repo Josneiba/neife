@@ -15,6 +15,7 @@ async function main() {
   const { hashClave } = await import("../lib/auth");
   const crm = await import("../lib/crm/servicio");
   const { hoyLocal, sumarDias, inicioSemana } = await import("../lib/crm/fechas");
+  const plan = await import("../lib/crm/servicio-planificacion");
 
   const d = await getDb();
   const r = await d.execute({ sql: "SELECT id FROM usuarios WHERE email = ?", args: ["asesor@neife.test"] });
@@ -108,6 +109,40 @@ async function main() {
   await crm.crearPlan(id, { fuente: "actividades", fecha: dia(1), texto: "Charla en la junta de vecinos" });
   await crm.crearPlan(id, { fuente: "red", fecha: dia(2), texto: "Café con colega de familia para derivaciones" });
   await crm.fijarMeta(id, "consultas_nuevas", "semana", lunes, 6);
+
+  // ---- v2: ubicaciones, citas, requisitos, derivaciones y conformidad ----
+  const citas = await import("../lib/crm/servicio-citas");
+  const seg = await import("../lib/crm/servicio-seguimiento");
+  const todos = await crm.listarPersonas(id, {}, hoy);
+  const por = (n: string) => todos.find((p) => p.nombre.startsWith(n));
+  const coords: Record<string, [number, number]> = {
+    Maipú: [-33.51, -70.76], Ñuñoa: [-33.457, -70.598], "Puente Alto": [-33.61, -70.575], Santiago: [-33.449, -70.669],
+    Providencia: [-33.43, -70.61], "La Florida": [-33.52, -70.59], "San Bernardo": [-33.592, -70.699],
+    Valparaíso: [-33.047, -71.612], "Viña del Mar": [-33.025, -71.552], Concepción: [-36.827, -73.05],
+  };
+  for (const p of todos) {
+    const c = coords[p.comuna];
+    if (c) await crm.actualizarPersona(id, p.id, { ubicacion: { lat: c[0] + ((p.id % 7) - 3) * 0.004, lng: c[1] + ((p.id % 5) - 2) * 0.004 } });
+  }
+  const pedro = por("Pedro");
+  const dani = por("Daniela");
+  const fran = por("Francisca");
+  const cami = por("Camila");
+  const nacho = por("Ignacio");
+  if (pedro) await citas.crearCita(id, { tipo: "asesoria", fecha: hoy, horaIni: "10:00", horaFin: "11:00", personaId: pedro.id, canal: "presencial" });
+  if (dani) await citas.crearCita(id, { tipo: "reunion", fecha: hoy, horaIni: "15:30", horaFin: "16:15", personaId: dani.id, canal: "video" });
+  if (fran) await citas.crearCita(id, { tipo: "asesoria", fecha: dia(1), horaIni: "09:00", horaFin: "10:00", personaId: fran.id, canal: "video" });
+  await citas.crearCita(id, { tipo: "evento", fecha: dia(2), horaIni: "18:00", horaFin: "19:30", titulo: "Charla en junta de vecinos" });
+  for (const p of [pedro, dani, fran]) if (p) await seg.agregarPasosSugeridos(id, p.id);
+  if (pedro) {
+    const ps = await seg.listarPasos(id, pedro.id);
+    for (const x of ps.slice(0, 2)) await seg.fijarEstadoPaso(id, x.id, "listo");
+  }
+  if (cami) await seg.fijarSatisfaccion(id, cami.id, 5, "Muy clara la explicación.");
+  if (nacho) {
+    await seg.guardarDerivacion(id, { personaId: nacho.id, colega: "Abg. Marcela Díaz", comisionTipo: "porcentaje", comisionValor: 20, comisionEstado: "acordada", resultado: "aceptado", trato: "Muy buen trato, respondió rápido.", satisfaccion: 4 }, hoy);
+  }
+  await plan.crearNotaZona(id, { region: "Metropolitana de Santiago", comuna: "Maipú", texto: "Juzgado de Letras del Trabajo cerca; junta de vecinos acepta charlas los sábados." });
 
   console.log("Listo. Entra como asesor@neife.test / AsesorDemo-2026 y abre /panel/crm");
   await cerrarDb();

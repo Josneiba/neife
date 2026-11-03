@@ -7,7 +7,7 @@ import { urlSitio } from "../sitio";
 import { mensajeError } from "../errores";
 import { nombreMateria } from "../materias";
 import { getDb, auditar } from "../db";
-import { cifrar, codigoAleatorio } from "../crypto";
+import { cifrar, codigoAleatorio, codigoCaso } from "../crypto";
 import { usuarioActual } from "../auth";
 import { ipActual } from "../guards";
 import { permitir } from "../ratelimit";
@@ -53,17 +53,19 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
 
   const { texto: relato } = limpiarDatosPersonales(s.relato);
   const codigo = codigoAleatorio();
+  const codigoSeguimiento = codigoCaso("CASO");
 
   let id: number;
   try {
     const d = await getDb();
     const r = await d.execute({
       sql: `INSERT INTO solicitudes
-              (codigo, asesor_id, cliente_id, materia, region, urgencia, presupuesto,
+              (codigo, codigo_seguimiento, asesor_id, cliente_id, materia, region, urgencia, presupuesto,
                relato_enc, nombre_enc, email_enc, telefono_enc, derivar_ok, conservar_datos, terminos_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         codigo,
+        codigoSeguimiento,
         asesor.usuarioId,
         clienteId,
         s.materia,
