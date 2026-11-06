@@ -5,6 +5,7 @@ import { listarAsesoresPublicos } from "@/lib/datos";
 import { usuarioActual } from "@/lib/auth";
 import { esMateria } from "@/lib/materias";
 import { leerTerminos } from "@/lib/terminos";
+import { FilaLibros } from "@/components/LomosLibros";
 
 export const metadata: Metadata = { title: "Ver normas aplicables" };
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ export default async function Solicitar({
     ? "Por ahora no hay asesores disponibles para recibir una solicitud. Puedes revisar las sugerencias de normas y volver más tarde."
     : "El envío de solicitudes está temporalmente deshabilitado hasta que la administración complete y publique los Términos y condiciones.";
   return (
-    <div className="contenedor pagina-estrecha">
+    <>
+    <FilaLibros className="fila-libros-caso" semilla={5} cantidad={60} />
+    <div className="contenedor pagina-estrecha tu-caso">
       <h1>Tu caso</h1>
       <p>Cuéntanos qué pasó y te mostramos las normas que podrían aplicar.</p>
       {!puedeSolicitar ? (
@@ -58,5 +61,6 @@ export default async function Solicitar({
         email={usuario?.rol === "cliente" ? usuario.email : undefined}
       />
     </div>
+    </>
   );
 }

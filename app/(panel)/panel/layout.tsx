@@ -1,5 +1,6 @@
 import "../../panel.css";
 import "../../crm.css";
+import "../../tema-panel.css";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { usuarioActual } from "@/lib/auth";

@@ -202,6 +202,15 @@ export async function subirMetaHoyAccion() {
   refrescar();
 }
 
+/** El «−» de «Meta de hoy»: baja en 1 la meta diaria de clientes nuevos (nunca bajo 0). */
+export async function bajarMetaHoyAccion() {
+  const u = await requerirAbogado();
+  const hoy = hoyLocal();
+  const actual = (await crm.metasVigentes(u.id, "dia", hoy)).consultas_nuevas;
+  await crm.fijarMeta(u.id, "consultas_nuevas", "dia", inicioPeriodo("dia", hoy), Math.max(actual - 1, 0));
+  refrescar();
+}
+
 /* ---------- Tareas ---------- */
 
 async function crearTareaInterna(_prev: EstadoForm, fd: FormData): Promise<EstadoForm> {

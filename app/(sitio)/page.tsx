@@ -2,12 +2,14 @@ import Link from "next/link";
 import { Icono, type NombreIcono } from "@/components/Iconos";
 import { Pasos } from "@/components/Avance";
 import { INICIO, SITIO } from "@/lib/contenido";
+import { EstanteLateral, FilaLibros } from "@/components/LomosLibros";
 
 export default function Inicio() {
   return (
     <>
-      <section className="contenedor inicio-hero" aria-labelledby="t-hero">
-        <div className="inicio-hero-texto">
+      <section className="biblioteca-hero" aria-labelledby="t-hero">
+        <EstanteLateral lado="izq" />
+        <div className="bh-centro">
           <p className="etiqueta-sup">Orientación legal en Chile</p>
           <h1 id="t-hero">{INICIO.titulo}</h1>
           <p className="inicio-bajada">{INICIO.bajada}</p>
@@ -21,8 +23,12 @@ export default function Inicio() {
           </div>
           <p className="ayuda" style={{ marginTop: 14 }}>Sin cuenta. Orientación general, no reemplaza a un abogado.</p>
         </div>
+        <EstanteLateral lado="der" />
+        <FilaLibros className="fila-libros-hero" semilla={11} />
+      </section>
 
-        <aside className="inicio-vista" aria-label="Así se ve el seguimiento de tu caso">
+      <section className="contenedor inicio-sec inicio-seguimiento" aria-label="Así se ve el seguimiento de tu caso">
+        <aside className="inicio-vista">
           <div className="vista-cab">
             <span className="vista-folio">Solicitud 7K3M2QPX</span>
             <span className="vista-etq">Ejemplo</span>

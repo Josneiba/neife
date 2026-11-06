@@ -1,0 +1,768 @@
+/*
+  Neife · Tema "La Biblioteca" (sitio público + base compartida).
+  Se carga DESPUÉS de globals.css y solo redefine apariencia (colores de la marca intactos):
+  madera y estantes, pergamino, tipografías Cinzel + Cormorant Garamond, sin esquinas redondeadas.
+  El panel y el CRM se ajustan en tema-panel.css (IBM Plex Sans para datos).
+*/
+
+:root {
+  --radio: 0px;
+  --cafe-madera: #5d3a33;
+  --cafe-estante: #4a2d27;
+  --pergamino: #f3e6d3;
+  --pergamino-borde: #cdb79c;
+  --hoja: #fffdf7;
+  --f-titulo: "Cinzel", Georgia, serif;
+  --f-texto: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --f-datos: "IBM Plex Sans Variable", "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fondo: #f6efe7;
+  --borde: #ddd5c9;
+}
+
+/* Cormorant usa números "antiguos" por defecto: se fuerzan alineados (el atajo `font` los reinicia) */
+* {
+  font-feature-settings: "lnum" 1;
+}
+
+body {
+  font-family: var(--f-texto);
+  font-size: 1.25rem;
+  line-height: 1.4;
+  color: var(--pizarra-hondo);
+  background: var(--crema-claro);
+}
+
+/* ---------- Títulos ---------- */
+h1 {
+  font-family: var(--f-texto);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.05;
+}
+h2 {
+  font-family: var(--f-titulo);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  line-height: 1.25;
+}
+h3 {
+  font-family: var(--f-texto);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+h4 {
+  font-family: var(--f-titulo);
+  letter-spacing: 0.08em;
+}
+.ayuda,
+.etiqueta-sup {
+  font-family: var(--f-texto);
+}
+.ayuda {
+  font-size: 1.0625rem;
+  font-style: italic;
+  color: var(--cafe-hondo);
+}
+.etiqueta-sup {
+  font-family: var(--f-titulo);
+  font-size: 0.8125rem;
+  letter-spacing: 0.28em;
+  font-weight: 600;
+  color: var(--cafe);
+}
+a {
+  color: var(--azul-texto);
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  font-family: var(--f-titulo);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 14px 22px;
+  min-height: 46px;
+}
+.btn-primario {
+  background: var(--cafe);
+  color: #fff;
+  border-color: var(--cafe);
+}
+.btn-primario:hover:not(:disabled) {
+  background: var(--cafe-hondo);
+  border-color: var(--cafe-hondo);
+}
+.btn-secundario {
+  background: transparent;
+  color: var(--pizarra-hondo);
+  border-color: var(--pizarra-hondo);
+}
+.btn-secundario:hover:not(:disabled) {
+  background: var(--pergamino);
+}
+.btn-claro {
+  background: var(--amarillo);
+  color: var(--pizarra-hondo);
+}
+.btn-claro:hover:not(:disabled) {
+  background: var(--amarillo-claro);
+}
+.btn-chico {
+  padding: 9px 14px;
+  min-height: 38px;
+  font-size: 0.75rem;
+}
+
+/* ---------- Encabezado: madera con el logo sobre una placa crema ---------- */
+.encabezado {
+  background: var(--cafe-hondo);
+  border-bottom: 4px solid var(--cafe-madera);
+}
+.encabezado-interior {
+  min-height: 84px;
+}
+.logo {
+  background: var(--crema-claro);
+  padding: 5px 12px;
+  border: 1px solid var(--amarillo);
+}
+.logo-img {
+  height: 44px;
+}
+.encabezado .nav {
+  gap: 6px;
+}
+.encabezado .nav a:not(.btn),
+.encabezado .nav-boton {
+  font-family: var(--f-titulo);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--crema-claro);
+  padding: 10px 12px;
+}
+.encabezado .nav a:not(.btn):hover,
+.encabezado .nav-boton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.encabezado .nav a:not(.btn)[aria-current="page"] {
+  box-shadow: inset 0 -2px 0 var(--amarillo);
+}
+.encabezado .nav-sep {
+  background: rgba(228, 207, 187, 0.4);
+}
+.encabezado .btn-secundario {
+  color: var(--crema-claro);
+  border-color: var(--crema);
+}
+.encabezado .btn-secundario:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.encabezado .btn-primario {
+  background: var(--amarillo);
+  border-color: var(--amarillo);
+  color: var(--pizarra-hondo);
+}
+.encabezado .btn-primario:hover:not(:disabled) {
+  background: var(--amarillo-claro);
+  border-color: var(--amarillo-claro);
+}
+@media (max-width: 720px) {
+  .encabezado-interior {
+    min-height: 64px;
+  }
+  .logo-img {
+    height: 34px;
+  }
+  .encabezado .nav a.nav-icono,
+  .encabezado .nav-boton.nav-icono {
+    color: var(--crema-claro);
+  }
+}
+
+/* ---------- Pie ---------- */
+.pie {
+  background: var(--pizarra-hondo);
+  border-top: 4px solid var(--amarillo);
+  color: var(--crema);
+}
+.pie-marca p,
+.pie a {
+  font-family: var(--f-titulo);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.pie-marca p {
+  font-family: var(--f-texto);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ---------- Lomos de libros (decorativos) ---------- */
+.libro {
+  display: block;
+  flex: none;
+  max-height: 100%;
+  border-radius: 2px 2px 0 0;
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.14), inset -3px 0 0 rgba(0, 0, 0, 0.22), inset 0 8px 0 -4px rgba(255, 222, 89, 0.55), inset 0 -8px 0 -4px rgba(255, 222, 89, 0.4);
+}
+.estante-lateral {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 26px 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.25));
+  overflow: hidden;
+}
+.estante-izq {
+  border-right: 10px solid var(--cafe-estante);
+}
+.estante-der {
+  border-left: 10px solid var(--cafe-estante);
+}
+.estante-fila {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 14px;
+  height: 132px;
+  overflow: hidden;
+  border-bottom: 12px solid var(--cafe-estante);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.25);
+}
+.fila-libros {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 16px;
+  height: 52px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--cafe-madera), var(--cafe-hondo));
+  border-bottom: 8px solid var(--cafe-estante);
+}
+.fila-libros .libro {
+  max-height: 46px;
+}
+.fila-libros-hero {
+  display: none;
+}
+
+/* ---------- Portada ---------- */
+.biblioteca-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr);
+  min-height: 660px;
+  background: linear-gradient(180deg, var(--cafe-madera) 0, var(--cafe-hondo) 55%, var(--cafe-madera));
+  overflow: hidden;
+}
+.bh-centro {
+  align-self: center;
+  margin: 44px clamp(16px, 3vw, 40px);
+  padding: 44px 52px 40px;
+  text-align: center;
+  background: var(--pergamino) repeating-linear-gradient(180deg, transparent 0 33px, rgba(136, 88, 78, 0.08) 33px 34px);
+  border: 1px solid var(--pergamino-borde);
+  box-shadow: 0 0 0 8px var(--cafe-estante), 0 0 0 9px var(--amarillo), 0 24px 50px rgba(0, 0, 0, 0.5);
+}
+.bh-centro h1 {
+  font-size: clamp(2.2rem, 4.6vw, 3.1rem);
+  margin: 12px auto 14px;
+  max-width: 18ch;
+}
+.bh-centro .inicio-bajada {
+  margin: 0 auto;
+  max-width: 48ch;
+  font-size: 1.3rem;
+  color: var(--pizarra);
+}
+.bh-centro .botones {
+  justify-content: center;
+  margin-top: 24px;
+}
+.bh-centro .ayuda {
+  margin-bottom: 0;
+}
+@media (max-width: 1100px) {
+  .biblioteca-hero {
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+  }
+  .estante-lateral {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .biblioteca-hero {
+    display: block;
+    min-height: 0;
+  }
+  .fila-libros-hero {
+    display: flex;
+  }
+  .bh-centro {
+    margin: 24px 14px 28px;
+    padding: 28px 20px 26px;
+    box-shadow: 0 0 0 5px var(--cafe-estante), 0 0 0 6px var(--amarillo), 0 14px 30px rgba(0, 0, 0, 0.4);
+  }
+  .bh-centro .botones .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* Acta de seguimiento (ejemplo) */
+.inicio-seguimiento {
+  display: flex;
+  justify-content: center;
+  padding-top: 56px;
+}
+.inicio-vista {
+  width: 100%;
+  max-width: 560px;
+  background: var(--pergamino) repeating-linear-gradient(180deg, transparent 0 33px, rgba(136, 88, 78, 0.1) 33px 34px);
+  border: 1px solid var(--pergamino-borde);
+  border-top: 1px solid var(--pergamino-borde);
+  box-shadow: 0 0 0 7px var(--crema-claro), 0 0 0 8px var(--amarillo), 0 18px 36px rgba(59, 72, 72, 0.25);
+  padding: 26px 28px 22px;
+}
+.vista-cab {
+  border-bottom: 3px double var(--cafe);
+  padding-bottom: 12px;
+}
+.vista-folio {
+  font-family: "IM Fell English", var(--f-texto);
+  font-size: 1.6rem;
+  font-weight: 400;
+}
+.vista-etq {
+  border-radius: 0;
+  font-family: var(--f-titulo);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+.vista-materia {
+  font-style: italic;
+  color: var(--cafe-hondo);
+  font-size: 1.15rem;
+}
+.vista-lista {
+  font-size: 1.15rem;
+}
+
+/* ---------- Secciones del inicio ---------- */
+.inicio-sec {
+  padding-top: 64px;
+}
+.inicio-sec h2 {
+  text-align: center;
+  font-size: clamp(1.3rem, 2.6vw, 1.9rem);
+  margin-bottom: 8px;
+}
+.inicio-sec h2::after {
+  content: "⚖";
+  display: block;
+  margin-top: 8px;
+  color: var(--cafe);
+  font-size: 1.1rem;
+  letter-spacing: 0;
+}
+
+/* ¿Qué te pasó?: seis tomos en un estante */
+.situaciones {
+  counter-reset: sit;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  height: 380px;
+  margin: 24px 0 0;
+  padding: 34px 40px 0;
+  background: linear-gradient(180deg, var(--cafe-madera), var(--cafe-hondo));
+  border: 6px solid var(--cafe-estante);
+  border-bottom: 26px solid var(--cafe-estante);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35), 0 3px 0 var(--amarillo);
+}
+.situaciones li {
+  position: relative;
+  counter-increment: sit;
+  flex: 1 1 0;
+  max-width: 170px;
+  display: flex;
+}
+.situaciones li:nth-child(1) { height: 340px; --lomo: #88584e; --lomo-t: #fff; }
+.situaciones li:nth-child(2) { height: 310px; --lomo: #c9ab8d; --lomo-t: #2b3535; }
+.situaciones li:nth-child(3) { height: 345px; --lomo: #71959f; --lomo-t: #fff; }
+.situaciones li:nth-child(4) { height: 318px; --lomo: #c78178; --lomo-t: #fff; }
+.situaciones li:nth-child(5) { height: 338px; --lomo: #e8c53f; --lomo-t: #2b3535; }
+.situaciones li:nth-child(6) { height: 322px; --lomo: #3b4848; --lomo-t: #fff; }
+.situaciones li::before {
+  content: counter(sit, upper-roman);
+  position: absolute;
+  z-index: 1;
+  top: 36px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--f-titulo);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--lomo-t);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.situaciones a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  min-height: 0;
+  padding: 56px 0 50px;
+  border: 0;
+  background-color: var(--lomo);
+  background-image: linear-gradient(rgba(255, 222, 89, 0.75), rgba(255, 222, 89, 0.75)), linear-gradient(rgba(255, 222, 89, 0.75), rgba(255, 222, 89, 0.75));
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px;
+  background-position: 0 18px, 0 calc(100% - 18px);
+  color: var(--lomo-t);
+  font-family: var(--f-texto);
+  font-weight: 700;
+  font-size: 1.55rem;
+  line-height: 1.1;
+  text-align: center;
+  box-shadow: inset 5px 0 0 rgba(255, 255, 255, 0.14), inset -5px 0 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+.situaciones a:hover {
+  background-color: var(--lomo);
+  filter: brightness(1.08);
+  transform: rotate(180deg) translateX(6px);
+}
+.situaciones a:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: 3px;
+}
+.situaciones a svg {
+  display: none;
+}
+.inicio-sec .ayuda {
+  text-align: center;
+  margin-top: 22px;
+}
+@media (max-width: 860px) {
+  .situaciones {
+    padding: 22px 14px 0;
+  }
+  .situaciones a {
+    font-size: 1.25rem;
+    padding: 50px 0 44px;
+  }
+}
+@media (max-width: 720px) {
+  .situaciones {
+    display: grid;
+    height: auto;
+    gap: 6px;
+    padding: 16px 12px;
+    border-bottom-width: 18px;
+  }
+  .situaciones li,
+  .situaciones li:nth-child(n) {
+    max-width: none;
+    height: auto;
+    min-height: 56px;
+  }
+  .situaciones li::before {
+    position: static;
+    flex: none;
+    width: 46px;
+    display: grid;
+    place-items: center;
+    background: var(--lomo);
+    border-right: 3px solid var(--amarillo);
+    opacity: 1;
+  }
+  .situaciones a {
+    writing-mode: horizontal-tb;
+    transform: none;
+    justify-content: flex-start;
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 1.3rem;
+    background-image: none;
+  }
+  .situaciones a:hover {
+    transform: none;
+  }
+}
+
+/* Cómo funciona: cuatro fichas de pergamino */
+.inicio-pasos {
+  gap: 34px;
+  margin-top: 28px;
+}
+.inicio-pasos li {
+  background: var(--hoja);
+  border: 1px solid var(--pergamino-borde);
+  padding: 24px 22px 22px;
+  box-shadow: 0 0 0 5px var(--crema-claro), 0 0 0 6px var(--pergamino-borde);
+}
+.inicio-pasos h3 {
+  font-size: 1.5rem;
+  margin: 12px 0 6px;
+}
+.inicio-pasos p {
+  font-size: 1.15rem;
+  color: var(--pizarra);
+}
+.ip-num {
+  border-radius: 0;
+  background: var(--pergamino);
+  color: var(--cafe);
+  border: 1px solid var(--cafe);
+}
+@media (max-width: 520px) {
+  .inicio-pasos {
+    gap: 14px;
+  }
+}
+
+/* Para quién es */
+.inicio-caja {
+  background: var(--hoja);
+  border: 1px solid var(--pergamino-borde);
+  box-shadow: 0 0 0 5px var(--crema-claro), 0 0 0 6px var(--pergamino-borde);
+}
+.inicio-dos {
+  gap: 34px;
+}
+.inicio-caja-oscura {
+  background: var(--pizarra);
+  border: 1px solid var(--pizarra-hondo);
+  border-top: 3px solid var(--amarillo);
+  box-shadow: 0 0 0 5px var(--crema-claro), 0 0 0 6px var(--pizarra-hondo);
+}
+.inicio-caja h2 {
+  text-align: left;
+  font-size: 1.25rem;
+}
+.inicio-caja h2::after {
+  display: none;
+}
+.lista-check li {
+  font-size: 1.15rem;
+}
+.inicio-datos {
+  background: var(--pergamino);
+  border-left: 4px solid var(--cafe);
+  padding: 22px 24px;
+}
+.inicio-datos h2 {
+  text-align: left;
+}
+.inicio-datos h2::after {
+  display: none;
+}
+.inicio-datos p {
+  font-size: 1.15rem;
+}
+
+/* ---------- Formularios ---------- */
+.campo > label,
+.campo-titulo,
+legend {
+  font-family: var(--f-datos);
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cafe-hondo);
+}
+.entrada {
+  font-family: var(--f-datos);
+  font-size: 1rem;
+  background: var(--hoja);
+  border: 1px solid var(--pizarra-hondo);
+}
+.entrada:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: 0;
+}
+.opcion {
+  font-family: var(--f-texto);
+  font-size: 1.2rem;
+}
+.opcion input {
+  accent-color: var(--cafe);
+}
+.error-campo {
+  font-family: var(--f-datos);
+}
+.conmutador a[aria-current="true"] {
+  background: var(--pizarra-hondo);
+  color: var(--amarillo);
+}
+
+.pagina-estrecha h1 {
+  font-size: clamp(2.1rem, 4.4vw, 3rem);
+}
+.pagina-estrecha > p {
+  font-size: 1.3rem;
+  color: var(--pizarra);
+}
+.pagina-estrecha .formulario:not(.tu-caso .formulario) {
+  background: var(--pergamino);
+  border: 1px solid var(--pergamino-borde);
+  padding: 28px 30px;
+  box-shadow: 0 0 0 6px var(--crema-claro), 0 0 0 7px var(--pergamino-borde);
+}
+
+/* «Tu caso»: formulario amplio, con la tira de libros arriba */
+.tu-caso {
+  max-width: 940px;
+  padding-top: 0;
+}
+.fila-libros-caso {
+  justify-content: center;
+  border-bottom: 3px solid var(--amarillo);
+}
+.tu-caso {
+  padding-top: 34px;
+}
+.tu-caso h1 {
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(136, 88, 78, 0.5);
+}
+.tu-caso > h2 {
+  font-family: var(--f-texto);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1.75rem !important;
+  font-weight: 700;
+}
+.tu-caso .formulario {
+  max-width: none;
+  background: var(--pergamino) repeating-linear-gradient(180deg, transparent 0 33px, rgba(136, 88, 78, 0.07) 33px 34px);
+  border: 1px solid var(--pergamino-borde);
+  padding: 32px 38px;
+  box-shadow: 0 0 0 6px var(--crema-claro), 0 0 0 7px var(--pergamino-borde);
+}
+@media (max-width: 640px) {
+  .tu-caso .formulario {
+    padding: 22px 18px;
+  }
+}
+
+/* ---------- Avisos, etiquetas, tablas ---------- */
+.aviso {
+  font-family: var(--f-datos);
+  border-radius: 0;
+}
+.etiqueta {
+  border-radius: 0;
+}
+.tabla th {
+  font-family: var(--f-titulo);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+/* ---------- Resultados: normas como hojas de archivo ---------- */
+.res-t {
+  font-family: var(--f-titulo);
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-bottom: 3px double var(--cafe);
+  padding-bottom: 6px;
+}
+.normas-lista li {
+  background: var(--hoja);
+  border: 1px solid var(--pergamino-borde);
+  border-left: 4px solid var(--cafe);
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+.normas-lista summary {
+  font-family: var(--f-texto);
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+.normas-lista .extracto {
+  font-size: 1.15rem;
+}
+.llamada-asesoria {
+  background: var(--pergamino);
+  border: 1px solid var(--pergamino-borde);
+}
+.llamada-asesoria-destacada {
+  background: var(--pizarra-hondo);
+  color: var(--crema-claro);
+  border: 1px solid var(--pizarra-hondo);
+  border-top: 3px solid var(--amarillo);
+  box-shadow: 0 0 0 5px var(--crema-claro), 0 0 0 6px var(--pizarra-hondo);
+}
+.llamada-asesoria-destacada h3,
+.llamada-asesoria-destacada p {
+  color: var(--crema-claro);
+}
+.llamada-asesoria-destacada .btn-primario {
+  background: var(--amarillo);
+  border-color: var(--amarillo);
+  color: var(--pizarra-hondo);
+}
+.cta-fija {
+  box-shadow: 0 6px 18px rgba(43, 53, 53, 0.35);
+}
+
+/* Etapas y avance del caso */
+.etapas li.hecho .paso-marca,
+.etapas li.actual .paso-marca {
+  border-radius: 0;
+}
+.av-segmentos span {
+  border-radius: 0;
+}
+
+/* ---------- Esquinas rectas en el resto del sitio ---------- */
+.perfil-iniciales,
+.documento-legal,
+.aviso-cookies,
+.desplegable,
+.cuenta-casos > li,
+.opcion input {
+  border-radius: 0;
+}
+
+/* Nota de datos: el fondo se alinea con el ancho del contenido */
+.inicio-datos {
+  position: relative;
+  background: none;
+  border-left: 0;
+  padding: 86px 48px 22px;
+}
+.inicio-datos::before {
+  content: "";
+  position: absolute;
+  top: 64px;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  background: var(--pergamino);
+  border-left: 4px solid var(--cafe);
+}
+.inicio-datos > * {
+  position: relative;
+}

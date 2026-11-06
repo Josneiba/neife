@@ -1,0 +1,307 @@
+/*
+  Neife · Tema "La Biblioteca" para el panel del asesor, el CRM y el panel de administración.
+  Se carga DESPUÉS de panel.css y crm.css. Solo cambia apariencia: la lógica y el marcado no cambian.
+  Sobrio y profesional: sin objetos decorativos, IBM Plex Sans para datos, Cormorant Garamond para títulos y cifras,
+  esquinas rectas (salvo botón «+», íconos circulares, contadores y barras de progreso).
+*/
+
+.app {
+  --fondo: #f6efe7;
+  --borde: #ddd5c9;
+  --crm-sombra: 0 1px 2px rgba(43, 53, 53, 0.08);
+  font-family: var(--f-datos);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  background: var(--crema-claro);
+  color: var(--pizarra-hondo);
+}
+.app .principal,
+.app .ps-principal {
+  background: var(--crema-claro);
+}
+
+/* ---------- Títulos y textos ---------- */
+.app h1,
+.app h2,
+.app h3 {
+  font-family: var(--f-texto);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.app h1 { font-size: 1.75rem; line-height: 1.1; }
+.app h2 { font-size: 1.375rem; }
+.app h3 { font-size: 1.25rem; }
+.app .ayuda { font-family: var(--f-datos); font-style: normal; font-size: 0.875rem; color: var(--suave); }
+.app a { color: var(--azul-texto); }
+.app .crm-seccion-cab h2,
+.app .lista-seccion,
+.app .crm-mini-titulo,
+.app .p-sec > h2 {
+  font-family: var(--f-datos);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cafe-hondo);
+}
+.app .lista-seccion { border-top: 8px solid var(--crema); background: var(--crema-claro); }
+.app .crm-seccion-cab a { color: var(--azul-texto); text-decoration: underline; }
+.app .ba-titulo strong { font-family: var(--f-texto); font-weight: 600; font-size: 1.5rem; line-height: 1; }
+
+/* ---------- Botones ---------- */
+.app .btn {
+  font-family: var(--f-datos);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 8px 16px;
+  min-height: 40px;
+}
+.app .btn-chico { padding: 4px 10px; min-height: 30px; font-size: 0.875rem; }
+.app .btn-primario { background: var(--pizarra); border-color: var(--pizarra); color: #fff; }
+.app .btn-primario:hover:not(:disabled) { background: var(--pizarra-hondo); border-color: var(--pizarra-hondo); }
+.app .btn-secundario { background: transparent; border-color: var(--pizarra); color: var(--pizarra-hondo); }
+.app .btn-secundario:hover:not(:disabled) { background: var(--pergamino); }
+.app .btn-claro { background: var(--crema); color: var(--pizarra-hondo); }
+.app a.btn.btn-primario, .app .crm-gestion-lista a.btn-primario, .app .crm-lista-enlaces a.btn-primario { color: #fff; }
+.app .btn-peligro { background: transparent; color: var(--rosa-texto); border: 1px solid var(--rosa-texto); }
+.app .btn-peligro:hover:not(:disabled) { background: var(--rosa-claro); }
+.app .crm-pildora { border-radius: 999px; border-color: var(--cafe); color: var(--cafe-hondo); font-weight: 600; }
+.app .crm-pildora:hover { background: var(--pergamino); }
+
+/* ---------- Formularios ---------- */
+.app .entrada { font-family: var(--f-datos); background: var(--hoja); border: 1px solid var(--pizarra); }
+.app .entrada:focus-visible { outline: 3px solid var(--amarillo); }
+.app .campo > label, .app .campo-titulo, .app .crm-campo { font-family: var(--f-datos); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cafe-hondo); }
+
+/* ---------- Barra superior (por pantalla y de las páginas del panel) ---------- */
+.app .ba,
+.app .ps-barra {
+  background: var(--pizarra-hondo);
+  border-bottom: 3px solid var(--cafe);
+  color: var(--crema-claro);
+}
+.app .ba-izq,
+.app .ba .crm-icono-boton,
+.app .ps-burger,
+.app .ps-campana,
+.app .ba a { color: var(--crema-claro); }
+.app .ba-izq:hover,
+.app .ba .crm-icono-boton:hover:not(:disabled),
+.app .ps-burger:hover,
+.app .ps-campana:hover,
+.app .ba-titulo-boton:hover,
+.app .ba-fecha:hover { background: rgba(255, 255, 255, 0.1); }
+.app .ba-titulo strong, .app .ba-fecha, .app .ba-titulo-boton { color: #fff; }
+.app .ba-titulo small { color: var(--crema); }
+.app .ba-izq .ps-punto,
+.app .ps-punto { background: var(--rosa); border-color: var(--pizarra-hondo); }
+.app .ps-contador { background: var(--rosa); color: var(--pizarra-hondo); }
+.app .ba .crm-icono-boton.con-filtro { color: var(--amarillo); }
+.app .ps-marca { color: #fff; font-family: var(--f-texto); }
+.app .ps-tabs a { color: var(--crema); border-radius: 0; }
+.app .ps-tabs a:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.app .ps-tabs a[aria-current="page"] { background: rgba(255, 255, 255, 0.12); color: #fff; box-shadow: inset 0 -2px 0 var(--amarillo); }
+
+/* Encabezado de página (casos, informes, perfil…) */
+.app .p-cab { background: var(--crema-claro); border-bottom: 1px solid var(--borde); }
+.app .p-cab h1 { font-size: 1.5rem; }
+.app .p-cab .p-sub { font-family: var(--f-datos); }
+.app .chips-barra { background: var(--crema-claro); border-bottom: 1px solid var(--borde); }
+
+/* ---------- Barra inferior: las 5 secciones ---------- */
+.app .ps-nav, .app .crm-nav { background: var(--pizarra-hondo); border-top: 3px solid var(--cafe); }
+.app .ps-nav a, .app .crm-nav a { color: var(--crema); border-top: 3px solid transparent; margin-top: -3px; }
+.app .ps-nav a.activa, .app .crm-nav a.activa { color: #fff; border-top-color: var(--amarillo); border-bottom-color: transparent; background: rgba(255, 255, 255, 0.06); }
+.app .ps-nav-icono { border-radius: 0; }
+.app .ps-nav a.activa .ps-nav-icono { background: transparent; }
+
+/* ---------- Menú lateral desplegable (☰) ---------- */
+.app .ps-menu { background: var(--pizarra-hondo); color: var(--crema-claro); box-shadow: 6px 0 24px rgba(0, 0, 0, 0.5); }
+.app .ps-menu-cab { border-bottom: 1px solid rgba(228, 207, 187, 0.25); }
+.app .ps-menu-cab small { color: #9fb0b0; }
+.app .ps-menu-cab strong { color: #fff; font-family: var(--f-datos); font-size: 1rem; font-weight: 600; }
+.app .ps-menu .crm-icono-boton { color: var(--crema); }
+.app .ps-menu .crm-icono-boton:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.app .ps-menu-nav section { border-bottom: 1px solid rgba(228, 207, 187, 0.18); padding: 4px 0; }
+.app .ps-menu-nav a, .app .ps-salir {
+  color: var(--crema-claro);
+  border-radius: 0;
+  border-left: 3px solid transparent;
+  padding: 10px 10px;
+  font-size: 0.9375rem;
+}
+.app .ps-menu-nav a:hover, .app .ps-salir:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.app .ps-menu-nav a[aria-current="page"] { background: rgba(255, 255, 255, 0.09); border-left-color: var(--amarillo); color: #fff; font-weight: 600; }
+.app .ps-menu-nav section a, .app .ps-menu-nav section .ps-salir { padding: 10px 10px; }
+.app .ps-contador.en-lista { background: var(--rosa); color: var(--pizarra-hondo); }
+.app .ps-velo, .app .crm-velo { background: rgba(43, 53, 53, 0.55); }
+
+/* ---------- Botón + y hojas inferiores ---------- */
+.app .crm-fab { border-radius: 50%; background: var(--cafe); box-shadow: 0 4px 14px rgba(43, 53, 53, 0.4); }
+.app .crm-fab:hover { background: var(--cafe-hondo); }
+.app .crm-fab-item {
+  border-radius: 0;
+  background: var(--hoja);
+  color: var(--pizarra-hondo);
+  border-left: 4px solid var(--amarillo);
+  padding: 13px 20px;
+  font-family: var(--f-datos);
+  box-shadow: 0 3px 10px rgba(43, 53, 53, 0.3);
+}
+.app .crm-fab-item:hover { background: var(--pergamino); }
+.crm-hoja-fondo { background: rgba(43, 53, 53, 0.55); }
+.crm-hoja { border-radius: 0; border-top: 3px solid var(--cafe); background: var(--hoja); }
+.crm-hoja h2 { font-family: var(--f-texto); font-size: 1.6rem; font-weight: 600; text-transform: none; letter-spacing: 0; }
+@media (min-width: 700px) { .crm-hoja { border-radius: 0; } }
+.app .pop-panel { border-radius: 0; border: 1px solid var(--pizarra-hondo); box-shadow: 0 8px 28px rgba(43, 53, 53, 0.3); background: var(--hoja); }
+.app .pop-op { border-radius: 0; }
+.app .pop-op.activa { background: var(--pergamino); }
+.app .pop-op:hover { background: var(--crema-claro); }
+.app .chip-menu { border-radius: 0; border-color: var(--pizarra); }
+.app .chip-menu.activo { background: var(--pizarra); color: #fff; border-color: var(--pizarra); }
+.app .crm-chips a, .app .crm-chips-linea a, .app .crm-chip-boton { border-radius: 0; }
+.app .crm-chips a.activa, .app .crm-chips-linea a.activa, .app .crm-chip-boton.activa { background: var(--pizarra); }
+
+/* ---------- Indicadores clave: icono + nombre + real/meta + barra; meta de hoy dentro de la tarjeta ---------- */
+.app .crm-kpi {
+  border-radius: 0;
+  background: var(--hoja);
+  border: 1px solid var(--borde);
+  box-shadow: none;
+}
+.app .crm-kpi-enlace { border-radius: 0; padding: 12px 14px; gap: 6px 12px; }
+.app .crm-kpi-enlace:hover { background: var(--pergamino); }
+.app .crm-kpi-icono {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #efe9df;
+  color: var(--cafe-hondo);
+}
+.app .crm-kpi-icono svg { width: 20px; height: 20px; }
+.app .crm-kpi-nombre { font-family: var(--f-datos); font-size: 0.8125rem; font-weight: 500; color: #455252; }
+.app .crm-kpi-valor { font-family: var(--f-texto); font-size: 2.125rem; font-weight: 700; line-height: 1; color: var(--pizarra-hondo); }
+.app .crm-kpi-valor .sep { font-family: var(--f-datos); font-weight: 400; font-size: 1.25rem; color: #8a9494; opacity: 1; margin: 0 3px; }
+.app .crm-kpi.cumplida .crm-kpi-valor { color: var(--azul-texto); }
+.app .crm-kpi-barra { height: 6px; border-radius: 0; background: #e8e1d6; }
+.app .crm-kpi-barra span { border-radius: 0; background: var(--cafe); }
+.app .crm-kpi.cumplida .crm-kpi-barra span { background: var(--azul-texto); }
+.app .crm-lateral {
+  align-self: center;
+  margin: 10px 12px 10px 0;
+  padding: 8px 10px;
+  border-radius: 0;
+  background: #f1ebe1;
+  border: 1px solid var(--borde);
+  gap: 10px;
+}
+.app .crm-lateral-etiqueta { font-family: var(--f-datos); font-size: 0.75rem; color: #566262; }
+.app .crm-lateral-valor { font-family: var(--f-texto); font-size: 1.625rem; font-weight: 700; line-height: 1.05; color: var(--pizarra-hondo); }
+.app .crm-lateral-botones { display: flex; gap: 4px; }
+.app .crm-lateral-botones form { display: contents; }
+.app .crm-mas {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  border: 1px solid var(--pizarra);
+  background: var(--hoja);
+  color: var(--pizarra-hondo);
+}
+.app .crm-mas:hover { background: var(--pergamino); }
+@media (max-width: 420px) {
+  .app .crm-lateral { margin-right: 8px; padding: 6px 8px; gap: 6px; }
+  .app .crm-lateral-valor { font-size: 1.4rem; }
+  .app .crm-mas { width: 30px; height: 30px; }
+}
+
+/* ---------- Listas, mosaicos y tarjetas ---------- */
+.app .crm-persona { background: transparent; border-bottom: 1px solid var(--borde); }
+.app .crm-persona-enlace:hover { background: var(--pergamino); }
+.app .crm-persona-nombre { font-family: var(--f-datos); font-weight: 600; }
+.app .crm-baldosa { border-radius: 0; background: var(--hoja); border: 1px solid var(--borde); justify-items: start; grid-template-columns: auto 1fr; align-items: center; padding: 10px 12px; text-align: left; gap: 10px; }
+.app .crm-baldosa:hover { background: var(--pergamino); }
+.app .crm-baldosa-icono { width: 32px; height: 32px; border-radius: 0; background: transparent; color: var(--cafe-hondo); }
+.app .crm-baldosa-texto { font-size: 0.875rem; font-weight: 500; }
+.app .crm-globo { top: auto; right: 10px; position: absolute; border-radius: 99px; background: var(--rosa); }
+.app .crm-baldosa { position: relative; }
+.app .crm-baldosas { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.app .crm-chip { border-radius: 99px; background: var(--pergamino); color: var(--cafe-hondo); }
+.app .crm-tarjeta-consejo, .app .crm-desplegable, .app .crm-aviso, .app .crm-banner,
+.app .crm-plantilla, .app .crm-pasos li, .app .crm-informes-lista > li, .app .crm-informe-hoja,
+.app .crm-gestion-lista > li, .app .crm-notas-zona li, .app .crm-tarjeta-accion, .app .crm-indicador-fila,
+.app .crm-grupo-campos, .app .crm-semanas a, .app .desplegable-resumen, .app .crm-acordeon, .app .crm-nota-interna,
+.app .tiempo li, .app .crm-cita-fila, .app .crm-aviso-card { border-radius: 0; }
+.app .crm-tarjeta-consejo { background: var(--pergamino); border-color: var(--pergamino-borde); }
+.app .crm-aviso { background: var(--azul-claro); }
+.app .crm-acordeon { background: #efe6d9; }
+.app .crm-tarjeta-accion, .app .crm-aviso-card, .app .crm-semanas a { box-shadow: none; background: var(--hoja); }
+.app .crm-semanas a.actual { background: var(--pergamino); border-color: var(--cafe); }
+.app .crm-semanas b { font-family: var(--f-texto); font-size: 1.6rem; }
+.app .crm-informe-hoja { background: var(--hoja); }
+.app .crm-etapas button { border-radius: 0; }
+.app .crm-etapas button.activa { background: var(--pizarra); border-color: var(--pizarra); }
+.app .crm-casilla { border-radius: 0; }
+.app .crm-progreso, .app .crm-progreso span, .app .crm-zona-barra, .app .crm-embudo-barra, .app .crm-embudo-barra i { border-radius: 0; }
+.app .crm-sello { border-radius: 0; }
+.app .crm-segmento { border-radius: 0; }
+.app .crm-agenda-item { border-radius: 0; }
+.app .busca-campo { border-radius: 0; background: var(--hoja); border: 1px solid var(--pizarra); }
+.app .crm-mapa { border-radius: 0; }
+.app .banner-ficha.rojo { background: var(--rosa-texto); }
+.app .banner-ficha.verde { background: var(--azul-texto); }
+.app .ficha-seccion { border-bottom: 8px solid var(--crema); }
+.app .desplegable-resumen { background: var(--hoja); }
+.app .crm-kpis { gap: 10px; }
+
+/* ---------- Agenda: calendario con rejilla horaria ---------- */
+.app .crm-cal-scroll { border-radius: 0; border: 1px solid var(--borde); background: var(--hoja); }
+.app .crm-cal-semana a { border-radius: 0; }
+.app .crm-cal-semana a b { font-family: var(--f-datos); font-weight: 600; }
+.app .crm-cal-semana a.hoy b { border-color: var(--cafe); }
+.app .crm-cal-semana a.activa b { background: var(--cafe); color: #fff; }
+.app .crm-cal-semana a.con::after { background: var(--azul); }
+.app .crm-cal-todo li { border-radius: 0; background: #f6efe7; }
+.app .crm-cal-tabla > .crm-cal-esquina, .app .crm-cal-titulo { background: var(--hoja); }
+.app .crm-cal-ahora { border-top-color: var(--rosa-texto); }
+.app .crm-cal-ahora span { border-radius: 0; background: var(--rosa-texto); }
+.app .crm-cita { border-radius: 0; font-family: var(--f-datos); border-left-width: 4px; }
+.app .crm-cita.c-azul { background: #e6eef0; }
+.app .crm-cita.c-morado { background: #ece6f4; }
+.app .crm-cita.c-cafe { background: #f1e3d9; }
+.app .crm-cita.c-verde { background: #e3f1e6; }
+.app .crm-cita.c-gris { background: #eceeee; }
+.app .crm-cal-horas span { font-family: var(--f-datos); }
+
+/* ---------- Casos (tabla), filtros y ficha ---------- */
+.app .p-filtros { border-bottom: 1px solid var(--borde); background: var(--crema-claro); }
+.app .p-filtros a[aria-current="page"] { border-bottom-color: var(--cafe); color: var(--pizarra-hondo); }
+.app .p-tabla th { background: #efe6d9; font-family: var(--f-datos); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cafe-hondo); }
+.app .p-tabla tbody tr { background: var(--hoja); }
+.app .p-tabla td { background: transparent; }
+@media (hover: hover) and (pointer: fine) { .app .p-tabla tbody tr:hover td { background: var(--pergamino); } }
+.app .p-tabla .folio { font-family: var(--f-datos); }
+.app .p-siguiente { background: var(--pergamino); border-bottom: 1px solid var(--pergamino-borde); }
+.app .p-kpis b { font-family: var(--f-texto); font-size: 1.75rem; color: var(--cafe); }
+.app .p-resumen b, .app .p-meta b { font-family: var(--f-datos); font-size: 1rem; font-weight: 600; color: var(--cafe-hondo); }
+.app .p-kpis { background: var(--hoja); }
+.app .p-pasos-barra { background: var(--crema-claro); }
+.app .bloque { border-radius: 0; background: var(--hoja); border-color: var(--borde); }
+.app .ed-completo { border-radius: 0; background: var(--pergamino); border-color: var(--pergamino-borde); }
+.app .zona-subida { border-radius: 0; }
+.app .barra-prog, .app .barra-prog > div { border-radius: 0; }
+.app .contador { border-radius: 0; background: var(--amarillo); color: var(--pizarra-hondo); }
+
+/* ---------- Panel de administración: barra lateral con el logo sobre placa ---------- */
+.app .lateral { background: var(--pizarra-hondo); border-right: 3px solid var(--cafe); }
+.app .lateral .logo { background: var(--crema-claro); border: 1px solid var(--amarillo); padding: 5px 10px; }
+.app .lateral .logo-img { height: 38px; }
+.app .lateral-nav a { border-radius: 0; border-left: 3px solid transparent; font-family: var(--f-datos); }
+.app .lateral-nav a[aria-current="page"] { background: rgba(255, 255, 255, 0.1); color: #fff; box-shadow: none; border-left-color: var(--amarillo); border-radius: 0; }
+.app .lateral-cuenta { border-top: 1px solid rgba(228, 207, 187, 0.25); }
+
+@media print {
+  .app { background: #fff; }
+}

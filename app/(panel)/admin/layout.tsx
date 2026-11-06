@@ -1,4 +1,5 @@
 import "../../panel.css";
+import "../../tema-panel.css";
 import Link from "next/link";
 import { requerirAdmin } from "@/lib/guards";
 import { salir } from "@/lib/acciones/auth";

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { metricaDe, type MetricaClave } from "@/lib/crm/catalogo";
 import { porcentaje } from "@/lib/crm/vista";
 import { IconoCrm } from "./IconosCrm";
-import { subirMetaHoyAccion } from "@/lib/acciones/crm";
+import { bajarMetaHoyAccion, subirMetaHoyAccion } from "@/lib/acciones/crm";
 
 /** Tarjeta de un indicador: icono, nombre, «real/meta» y una barra fina de avance. */
 export function TarjetaIndicador({
@@ -47,7 +47,7 @@ export function TarjetaIndicador({
   );
 }
 
-/** «Meta de hoy 0/2 [+]» junto a «Clientes nuevos». */
+/** «Meta de hoy 0/2 [−][+]» dentro de la tarjeta «Clientes nuevos». */
 export function MetaHoy({ real, meta }: { real: number; meta: number }) {
   return (
     <div className="crm-lateral" aria-label="Meta de hoy">
@@ -57,11 +57,18 @@ export function MetaHoy({ real, meta }: { real: number; meta: number }) {
           {real}/{meta}
         </span>
       </Link>
-      <form action={subirMetaHoyAccion}>
-        <button type="submit" className="crm-mas" aria-label="Subir la meta de hoy en 1" title="Subir la meta de hoy en 1">
-          <IconoCrm nombre="mas" tam={18} />
-        </button>
-      </form>
+      <div className="crm-lateral-botones">
+        <form action={bajarMetaHoyAccion}>
+          <button type="submit" className="crm-mas" aria-label="Bajar la meta de hoy en 1" title="Bajar la meta de hoy en 1">
+            <IconoCrm nombre="menos" tam={18} />
+          </button>
+        </form>
+        <form action={subirMetaHoyAccion}>
+          <button type="submit" className="crm-mas" aria-label="Subir la meta de hoy en 1" title="Subir la meta de hoy en 1">
+            <IconoCrm nombre="mas" tam={18} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

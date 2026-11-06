@@ -1,6 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/ibm-plex-sans";
+import "@fontsource/cinzel/400.css";
+import "@fontsource/cinzel/600.css";
+import "@fontsource/cinzel/700.css";
+import "@fontsource/cormorant-garamond/400.css";
+import "@fontsource/cormorant-garamond/400-italic.css";
+import "@fontsource/cormorant-garamond/500.css";
+import "@fontsource/cormorant-garamond/600.css";
+import "@fontsource/cormorant-garamond/700.css";
 import "./globals.css";
+import "./tema.css";
 import { BarraNavegacion } from "@/components/BarraNavegacion";
 
 export const metadata: Metadata = {
