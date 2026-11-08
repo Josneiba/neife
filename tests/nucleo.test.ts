@@ -351,16 +351,17 @@ test("biblioteca: la revisión reemplaza solo lo que cambió de versión y anota
   const { getDb } = await import("../lib/db");
   const { crearNorma } = await import("../lib/normas");
   const { revisarNormas } = await import("../lib/revision-normas");
+  const { parsearNorma } = await import("../lib/leychile");
   const xml = (version: string, texto: string) => `<?xml version="1.0" encoding="UTF-8"?>
 <Norma xmlns="http://www.leychile.cl/esquemas" normaId="555" fechaVersion="${version}" derogado="no derogado">
  <Metadatos><TituloNorma>LEY DE REVISION</TituloNorma></Metadatos>
  <EstructurasFuncionales><EstructuraFuncional tipoParte="Artículo" idParte="1" derogado="no derogado"><Texto>Artículo 1°.- ${texto}</Texto></EstructuraFuncional></EstructurasFuncionales>
 </Norma>`;
   await crearNorma({ nombre: "Ley de revisión", materia: "civil", fuente: "", archivo: "x.xml", usuarioId: null, piezas: [{ numero: "1", texto: "Texto viejo" }], bcnId: "555", version: "2020-01-01" });
-  const mismo = await revisarNormas({ descargar: async () => xml("2020-01-01", "Texto viejo") });
+  const mismo = await revisarNormas({ descargar: async () => parsearNorma(xml("2020-01-01", "Texto viejo")) });
   assert.equal(mismo.sinCambios, 1);
   assert.equal(mismo.actualizadas.length, 0);
-  const cambio = await revisarNormas({ descargar: async () => xml("2026-05-05", "Texto nuevo vigente") });
+  const cambio = await revisarNormas({ descargar: async () => parsearNorma(xml("2026-05-05", "Texto nuevo vigente")) });
   assert.deepEqual(cambio.actualizadas, ["Ley de revisión"]);
   const d = await getDb();
   const r = await d.execute("SELECT n.version, a.texto FROM normas n JOIN articulos a ON a.norma_id = n.id WHERE n.bcn_id = '555'");

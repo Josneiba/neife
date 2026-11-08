@@ -1,6 +1,6 @@
 import { getDb, auditar } from "./db";
 import { crearNorma, eliminarNorma } from "./normas";
-import { descargarXml, parsearNorma, type NormaLeyChile } from "./leychile";
+import { descargarNormaActual, type NormaLeyChile } from "./leychile";
 
 export type ResumenRevision = {
   revisadas: number;
@@ -10,7 +10,7 @@ export type ResumenRevision = {
   derogadas: string[];
 };
 
-type Descargar = (id: string) => Promise<string>;
+type Descargar = (id: string) => Promise<NormaLeyChile>;
 
 /**
  * Revisa en LeyChile las normas importadas de ahí y reemplaza las que cambiaron de versión.
@@ -18,7 +18,7 @@ type Descargar = (id: string) => Promise<string>;
  * permitido de una función en Vercel; el aviso diario va completando el resto.
  */
 export async function revisarNormas(opciones: { maximo?: number; descargar?: Descargar; adminId?: number | null } = {}): Promise<ResumenRevision> {
-  const { maximo = 5, descargar = descargarXml, adminId = null } = opciones;
+  const { maximo = 5, descargar = descargarNormaActual, adminId = null } = opciones;
   const d = await getDb();
   const lista = await d.execute({
     sql: `SELECT id, nombre, materia, bcn_id, version FROM normas
@@ -31,7 +31,7 @@ export async function revisarNormas(opciones: { maximo?: number; descargar?: Des
     const nombre = String(f.nombre);
     res.revisadas++;
     try {
-      const norma: NormaLeyChile = parsearNorma(await descargar(String(f.bcn_id)));
+      const norma = await descargar(String(f.bcn_id));
       if (norma.derogada) res.derogadas.push(nombre);
       if (norma.piezas.length === 0) throw new Error("LeyChile no entregó artículos.");
       if (norma.version && norma.version === String(f.version)) {

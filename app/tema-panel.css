@@ -294,9 +294,9 @@
 .app .barra-prog, .app .barra-prog > div { border-radius: 0; }
 .app .contador { border-radius: 0; background: var(--amarillo); color: var(--pizarra-hondo); }
 
-/* ---------- Panel de administración: barra lateral con el logo sobre placa ---------- */
+/* ---------- Panel de administración: barra lateral con el logo transparente ---------- */
 .app .lateral { background: var(--pizarra-hondo); border-right: 3px solid var(--cafe); }
-.app .lateral .logo { background: var(--crema-claro); border: 1px solid var(--amarillo); padding: 5px 10px; }
+.app .lateral .logo { background: transparent; border: 0; padding: 0; }
 .app .lateral .logo-img { height: 38px; }
 .app .lateral-nav a { border-radius: 0; border-left: 3px solid transparent; font-family: var(--f-datos); }
 .app .lateral-nav a[aria-current="page"] { background: rgba(255, 255, 255, 0.1); color: #fff; box-shadow: none; border-left-color: var(--amarillo); border-radius: 0; }

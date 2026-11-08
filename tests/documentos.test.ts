@@ -35,10 +35,40 @@ test("sentencia: causa, tribunal, partes", () => {
   assert.ok(a.partes.some((p) => p.rol === "demandante" && /María González Rojas/.test(p.nombre)));
 });
 
-import { parsearNorma } from "../lib/leychile";
+import { aplicarComparacionVersion, parsearNorma } from "../lib/leychile";
 import { coincideConFuente, fuentePorClave, FUENTES_WEB } from "../lib/fuentes";
 
 const xml = (titulo: string, tipo: string, numero: string) => `<?xml version="1.0"?><Norma normaId="999" fechaVersion="2024-01-01"><Metadatos><Identificador><TiposNumeros><TipoNumero><Tipo>${tipo}</Tipo><Numero>${numero}</Numero></TipoNumero></TiposNumeros></Identificador><TituloNorma>${titulo}</TituloNorma></Metadatos><EstructurasFuncionales><EstructuraFuncional tipoParte="Artículo"><Texto>Artículo 1°.- Texto.</Texto></EstructuraFuncional></EstructurasFuncionales></Norma>`;
+
+test("LeyChile parser recognizes abbreviated article headings", () => {
+  const documento = xml("Código de ejemplo", "Código", "")
+    .replace("Artículo 1°.- Texto.", "Art\uFFFDculo 2° Texto.")
+    .replace(
+      "</EstructuraFuncional></EstructurasFuncionales>",
+      "</EstructuraFuncional><EstructuraFuncional tipoParte=\"Artículo\"><Texto>Art 3° Otro texto.</Texto></EstructuraFuncional></EstructurasFuncionales>",
+    );
+  const norma = parsearNorma(documento);
+  assert.deepEqual(norma.piezas.map((pieza) => pieza.numero), ["2", "3"]);
+  assert.match(norma.piezas[0].texto, /Artículo 2°/);
+});
+
+test("LeyChile applies official version diffs only when the old text matches", () => {
+  const actual = [{ numero: "497", texto: "Art. 497. Texto anterior. Párrafo nuevo & vigente." }];
+  const pares = [
+    [
+      [{ t: "Art. 497. Texto anterior.<br>" }],
+      [{ t: "Art. 497. Texto anterior.<br>" }, { c: "a", t: "Párrafo nuevo &amp; vigente.<br>" }],
+    ],
+  ];
+
+  const actualizado = aplicarComparacionVersion([{ numero: "497", texto: "Art. 497. Texto anterior." }], pares);
+  assert.match(actualizado[0].texto, /Párrafo nuevo & vigente/);
+  assert.deepEqual(aplicarComparacionVersion(actual, pares), actual);
+  assert.throws(
+    () => aplicarComparacionVersion([{ numero: "497", texto: "Texto distinto." }], pares),
+    /no coincide con la versión anterior/,
+  );
+});
 
 test("fuentes web: solo se acepta la norma esperada", () => {
   const penal = fuentePorClave("codigo-penal")!;

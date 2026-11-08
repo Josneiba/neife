@@ -8,7 +8,7 @@ import { buscarArticulos, crearNorma, eliminarNorma, EXTENSIONES_PERMITIDAS, ext
 import { detectarMateria, nombreDeArchivo } from "../materia-auto";
 import { revisarNormas } from "../revision-normas";
 import { mensajeError } from "../errores";
-import { descargarXml, idNormaDesde, parsearNorma } from "../leychile";
+import { descargarNormaActual, idNormaDesde } from "../leychile";
 import { limiteArchivoMb } from "../sitio";
 import { esMateria } from "../materias";
 import { coincideConFuente, fuentePorClave } from "../fuentes";
@@ -140,7 +140,7 @@ export async function importarLeyChile(_prev: EstadoForm, fd: FormData): Promise
   if (!esMateria(datos.materia ?? "")) return { errores: { materia: "Elige una materia." }, valores };
 
   try {
-    const norma = parsearNorma(await descargarXml(id));
+    const norma = await descargarNormaActual(id);
     if (norma.piezas.length === 0) return { error: "LeyChile no entregó artículos para esa norma.", valores };
 
     const d = await getDb();
@@ -174,7 +174,7 @@ export async function actualizarNorma(fd: FormData) {
   const r = await d.execute({ sql: "SELECT bcn_id, materia, nombre FROM normas WHERE id = ?", args: [normaId] });
   const fila = r.rows[0];
   if (fila && fila.bcn_id) {
-    const norma = parsearNorma(await descargarXml(String(fila.bcn_id)));
+    const norma = await descargarNormaActual(String(fila.bcn_id));
     if (norma.piezas.length) {
       const nueva = await crearNorma({
         nombre: String(fila.nombre),
@@ -205,7 +205,7 @@ export async function importarFuenteWeb(clave: string, entrada: string): Promise
     if (!fuente) return { ok: false, texto: "Esa norma no está en la lista." };
     const id = idNormaDesde(String(entrada ?? ""));
     if (!id) return { ok: false, texto: "Pega el número de norma o el enlace de leychile.cl (tiene «idNorma=»)." };
-    const norma = parsearNorma(await descargarXml(id));
+    const norma = await descargarNormaActual(id);
     if (norma.idNorma && norma.idNorma !== id) return { ok: false, texto: "LeyChile devolvió otra norma distinta a la pedida. No se importó nada." };
     if (!coincideConFuente(fuente, norma.titulo, norma.identificadores)) {
       return { ok: false, texto: `Ese enlace corresponde a «${norma.titulo.slice(0, 90)}», no a ${fuente.nombre.split(",")[0]}. No se importó nada: revisa el enlace.` };

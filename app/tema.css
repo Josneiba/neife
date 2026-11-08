@@ -118,7 +118,7 @@ a {
   font-size: 0.75rem;
 }
 
-/* ---------- Encabezado: madera con el logo sobre una placa crema ---------- */
+/* ---------- Encabezado: madera con el logo transparente ---------- */
 .encabezado {
   background: var(--cafe-hondo);
   border-bottom: 4px solid var(--cafe-madera);
@@ -127,9 +127,9 @@ a {
   min-height: 84px;
 }
 .logo {
-  background: var(--crema-claro);
-  padding: 5px 12px;
-  border: 1px solid var(--amarillo);
+  background: transparent;
+  padding: 0;
+  border: 0;
 }
 .logo-img {
   height: 44px;

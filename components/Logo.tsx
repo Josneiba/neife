@@ -10,12 +10,12 @@ const BARRAS = [
   { ancho: 8, color: "#3B4848" },
 ];
 
-/** Logo oficial de Neife (fondo transparente, proporción 2,2:1). */
+/** Logo de Neife con estante de libros (fondo transparente, proporción 3,2:1). */
 export function Logo({ href = "/" }: { href?: string }) {
   return (
     <Link href={href} className="logo" aria-label="Neife, ir al inicio">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-neife.png" alt="" width={720} height={324} className="logo-img" decoding="async" />
+      <img src="/logo-neife.png" alt="" width={720} height={224} className="logo-img" decoding="async" />
     </Link>
   );
 }
