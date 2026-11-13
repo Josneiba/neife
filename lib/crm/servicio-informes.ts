@@ -47,3 +47,32 @@ export async function resumenMensual(abogadoId: number, inicio: string): Promise
 }
 
 export const hoy = hoyLocal;
+
+export type FilaOrigen = { origen: string; total: number; avanzaron: number; cerrados: number };
+
+export async function embudoPorOrigen(abogadoId: number): Promise<{ filas: FilaOrigen[]; tomados30: number }> {
+  const d = await getDb();
+  const [clientes, tomados] = await Promise.all([
+    d.execute({
+      sql: `SELECT origen, COUNT(*)::int AS total,
+                   SUM(CASE WHEN etapa IN ('mandato','derivado','cerrado') THEN 1 ELSE 0 END)::int AS avanzaron,
+                   SUM(CASE WHEN etapa = 'cerrado' THEN 1 ELSE 0 END)::int AS cerrados
+              FROM crm_personas WHERE abogado_id = ? AND creado_en >= ahora(-90)
+             GROUP BY origen ORDER BY total DESC`,
+      args: [abogadoId],
+    }),
+    d.execute({
+      sql: "SELECT COUNT(*)::int AS n FROM solicitudes WHERE asesor_id = ? AND tomada_en <> '' AND tomada_en >= ahora(-30)",
+      args: [abogadoId],
+    }),
+  ]);
+  return {
+    filas: clientes.rows.map((fila) => ({
+      origen: nombreOrigenCrm(String(fila.origen)),
+      total: Number(fila.total),
+      avanzaron: Number(fila.avanzaron),
+      cerrados: Number(fila.cerrados),
+    })),
+    tomados30: Number(tomados.rows[0]?.n ?? 0),
+  };
+}

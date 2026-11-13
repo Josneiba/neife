@@ -42,6 +42,7 @@ export function ShellPanel({
   email,
   avisos,
   casosNuevos,
+  bandeja,
   personas,
   hoy,
   children,
@@ -50,6 +51,7 @@ export function ShellPanel({
   email: string;
   avisos: number;
   casosNuevos: number;
+  bandeja: number;
   personas: Persona[];
   hoy: string;
   children: React.ReactNode;
@@ -74,7 +76,8 @@ export function ShellPanel({
 
   /* Igual que el menú de la referencia: una lista de accesos, una línea, y luego las ayudas. */
   const principales: Item[] = [
-    { href: "/panel", texto: "Casos", icono: "maletin", n: casosNuevos },
+    { href: "/panel/bandeja", texto: "Bandeja de solicitudes", icono: "lista", n: bandeja },
+    { href: "/panel", texto: "Mis casos", icono: "maletin", n: casosNuevos },
     { href: "/panel/crm/notificaciones", texto: "Notificaciones", icono: "campana", n: avisos },
     { href: "/panel/crm/informes?t=derivaciones", texto: "Colegas y derivaciones", icono: "intercambio" },
     { href: "/panel/crm/planificacion?t=indicadores", texto: "Indicadores clave", icono: "informe" },

@@ -104,6 +104,9 @@ export default async function FichaCliente({ params, searchParams }: { params: P
             <div className="crm-acciones-fila">
               <BotonEditarFicha p={p} />
               <BotonAgendarCita personaId={p.id} personas={[{ id: p.id, nombre: p.nombre }]} hoy={hoy} />
+              {p.solicitudId ? (
+                <a href={`/api/expediente/${p.solicitudId}/pdf`} target="_blank" rel="noopener noreferrer" className="btn btn-secundario btn-chico">Expediente PDF</a>
+              ) : null}
               {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="btn btn-secundario btn-chico">WhatsApp</a> : null}
               {p.telefono ? <a href={`sms:${p.telefono.replace(/[^\d+]/g, "")}`} className="btn btn-secundario btn-chico">SMS</a> : null}
               {p.telefono ? <a href={`tel:${p.telefono.replace(/[^\d+]/g, "")}`} className="btn btn-secundario btn-chico">Llamar</a> : null}

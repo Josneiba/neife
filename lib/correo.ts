@@ -90,11 +90,11 @@ export const correos = {
       texto: `Llegó una solicitud nueva de ${materia}.\n\nResponde pronto: el primer contacto es lo que más pesa para cerrar.\n${enlace}`,
     });
   },
-  confirmacion(para: string, enlace: string) {
+  confirmacion(para: string, enlace: string, abierta = false) {
     return enviarCorreo({
       para,
       asunto: "Recibimos tu solicitud",
-      texto: `Tu solicitud llegó al asesor. Te va a contactar por este medio o por teléfono.\n\nSigue el avance aquí, sin necesidad de cuenta:\n${enlace}\n\nGuarda este enlace: es la única forma de volver a ver tu caso.`,
+      texto: `${abierta ? "Tu solicitud quedó disponible en la bandeja para que la tome un asesor." : "Tu solicitud llegó al asesor."} Te contactará por este medio o por teléfono.\n\nSigue el avance aquí, sin necesidad de cuenta:\n${enlace}\n\nGuarda este enlace: es la única forma de volver a ver tu caso.`,
     });
   },
   avance(para: string, texto: string, enlace: string) {
@@ -116,6 +116,20 @@ export const correos = {
       para,
       asunto: "Contactos pendientes de hoy",
       texto: `${resumen}\n\nAbre tu panel:\n${enlace}`,
+    });
+  },
+  casoAbierto(para: string, resumen: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Nueva solicitud disponible en la bandeja",
+      texto: `Llegó una solicitud que coincide con tus avisos:\n\n${resumen}\n\nLéela y decide si la tomas:\n${enlace}\n\nCambia qué avisos recibes en Mi perfil.`,
+    });
+  },
+  horaReservada(para: string, cuando: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Una persona reservó una hora contigo",
+      texto: `Una persona de tus casos reservó una hora: ${cuando}.\n\nLa ves en tu agenda:\n${enlace}`,
     });
   },
 };

@@ -29,10 +29,10 @@ export default async function Cuenta() {
   const solicitudes = await listarSolicitudesCliente(u.id);
   const detalle = await Promise.all(
     solicitudes.map(async (s) => {
-      const perfil = await obtenerPerfil(s.asesorId);
+      const perfil = s.asesorId ? await obtenerPerfil(s.asesorId) : null;
       const informe = ["entregada", "derivada", "cerrada"].includes(s.estado) && !s.anonimizada ? await obtenerInformePorSolicitud(s.id) : null;
       const pendientes = ["aceptada", "informe"].includes(s.estado) && !s.anonimizada ? (await listarPendientes(s.id)).filter((p) => !p.hecho) : [];
-      return { s, pendientes, hayInforme: Boolean(informe?.entregado), asesor: perfil?.nombre ?? "El asesor" };
+      return { s, pendientes, hayInforme: Boolean(informe?.entregado), asesor: perfil?.nombre ?? (s.asesorId ? "El asesor" : "Un asesor (aún sin asignar)") };
     }),
   );
 

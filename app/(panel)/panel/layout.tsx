@@ -5,7 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { usuarioActual } from "@/lib/auth";
 import { salir } from "@/lib/acciones/auth";
-import { contarSolicitudesAsesor } from "@/lib/datos";
+import { contarSolicitudesAsesor, contarBandeja } from "@/lib/datos";
 import { Logo } from "@/components/Logo";
 import { Etiqueta } from "@/components/Etiqueta";
 import { TablasMovil } from "@/components/TablasMovil";
@@ -55,7 +55,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     );
   }
 
-  const [conteo, lista, personas] = await Promise.all([contarSolicitudesAsesor(u.id), avisos(u.id), listarPersonas(u.id, { limite: 500 })]);
+  const [conteo, lista, personas, abiertas] = await Promise.all([
+    contarSolicitudesAsesor(u.id),
+    avisos(u.id),
+    listarPersonas(u.id, { limite: 500 }),
+    contarBandeja(),
+  ]);
 
   return (
     <ShellPanel
@@ -63,6 +68,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       email={u.email}
       avisos={lista.filter((a) => a.nivel !== "info").length}
       casosNuevos={conteo.nueva ?? 0}
+      bandeja={abiertas}
       personas={personas.map((p) => ({ id: p.id, nombre: p.nombre }))}
       hoy={hoyLocal()}
     >

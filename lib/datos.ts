@@ -1,6 +1,7 @@
 import { getDb } from "./db";
 import { cifrar, descifrarSeguro } from "./crypto";
 import type { Estado } from "./etapas";
+import { completitud, type NivelInfo } from "./solicitud-calidad";
 
 /* ---------- Perfiles de asesores ---------- */
 
@@ -96,7 +97,7 @@ export type Solicitud = {
   id: number;
   codigo: string;
   codigoSeguimiento: string;
-  asesorId: number;
+  asesorId: number | null;
   clienteId: number | null;
   materia: string;
   region: string;
@@ -125,7 +126,7 @@ function aSolicitud(f: Fila): Solicitud {
     id: Number(f.id),
     codigo: String(f.codigo),
     codigoSeguimiento: String(f.codigo_seguimiento),
-    asesorId: Number(f.asesor_id),
+    asesorId: f.asesor_id === null || f.asesor_id === undefined ? null : Number(f.asesor_id),
     clienteId: f.cliente_id === null ? null : Number(f.cliente_id),
     materia: String(f.materia),
     region: String(f.region),
@@ -174,6 +175,130 @@ export async function obtenerSolicitudAsesor(id: number, asesorId: number): Prom
   const d = await getDb();
   const r = await d.execute({ sql: "SELECT * FROM solicitudes WHERE id = ? AND asesor_id = ?", args: [id, asesorId] });
   return r.rows[0] ? aSolicitud(r.rows[0]) : null;
+}
+
+/* ---------- Bandeja compartida ---------- */
+
+export type FiltrosBandeja = {
+  materia?: string;
+  presupuesto?: string;
+  urgencia?: string;
+  region?: string;
+  texto?: string;
+  soloMisMaterias?: boolean;
+  infoMinima?: number;
+};
+
+export type CasoAbierto = {
+  id: number;
+  codigoSeguimiento: string;
+  materia: string;
+  region: string;
+  urgencia: string;
+  presupuesto: string;
+  extracto: string;
+  creadoEn: string;
+  sinTomar24h: boolean;
+  puntaje: number;
+  nivel: NivelInfo;
+  falta: string[];
+};
+
+const CAMPOS_CASO_ABIERTO =
+  "id, codigo_seguimiento, materia, region, urgencia, presupuesto, relato_enc, creado_en, CASE WHEN creado_en < ahora(-1) THEN 1 ELSE 0 END AS sin_tomar_24h";
+
+function decodificarCasoAbierto(f: Fila) {
+  const relato = descifrarSeguro(String(f.relato_enc), "solicitud.relato");
+  const calidad = completitud({
+    relato,
+    presupuesto: String(f.presupuesto),
+    region: String(f.region),
+    urgencia: String(f.urgencia),
+  });
+  return {
+    id: Number(f.id),
+    codigoSeguimiento: String(f.codigo_seguimiento),
+    materia: String(f.materia),
+    region: String(f.region),
+    urgencia: String(f.urgencia),
+    presupuesto: String(f.presupuesto),
+    relato,
+    creadoEn: String(f.creado_en),
+    sinTomar24h: Number(f.sin_tomar_24h) === 1,
+    puntaje: calidad.puntaje,
+    nivel: calidad.nivel,
+    falta: calidad.falta,
+  };
+}
+
+/** Casos no asignados; consulta solo los campos necesarios y nunca descifra datos de contacto. */
+export async function listarBandeja(asesorId: number, f: FiltrosBandeja = {}): Promise<CasoAbierto[]> {
+  const d = await getDb();
+  const cond = ["asesor_id IS NULL", "estado = 'nueva'"];
+  const args: unknown[] = [];
+  if (f.materia) { cond.push("materia = ?"); args.push(f.materia); }
+  if (f.presupuesto) { cond.push("presupuesto = ?"); args.push(f.presupuesto); }
+  if (f.urgencia) { cond.push("urgencia = ?"); args.push(f.urgencia); }
+  if (f.region) { cond.push("region = ?"); args.push(f.region); }
+  if (f.soloMisMaterias) {
+    const perfil = await obtenerPerfil(asesorId);
+    if (!perfil?.materias.length) return [];
+    cond.push(`materia IN (${perfil.materias.map(() => "?").join(",")})`);
+    args.push(...perfil.materias);
+  }
+  const r = await d.execute({
+    sql: `SELECT ${CAMPOS_CASO_ABIERTO} FROM solicitudes WHERE ${cond.join(" AND ")} ORDER BY creado_en DESC, id DESC LIMIT 300`,
+    args,
+  });
+  const texto = (f.texto ?? "").trim().toLowerCase();
+  return r.rows
+    .map(decodificarCasoAbierto)
+    .filter((s) => (!texto || s.relato.toLowerCase().includes(texto)) && (!f.infoMinima || s.puntaje >= f.infoMinima))
+    .map((s) => ({
+      id: s.id,
+      codigoSeguimiento: s.codigoSeguimiento,
+      materia: s.materia,
+      region: s.region,
+      urgencia: s.urgencia,
+      presupuesto: s.presupuesto,
+      extracto: s.relato.length > 420 ? `${s.relato.slice(0, 420).trim()}…` : s.relato,
+      creadoEn: s.creadoEn,
+      sinTomar24h: s.sinTomar24h,
+      puntaje: s.puntaje,
+      nivel: s.nivel,
+      falta: s.falta,
+    }));
+}
+
+export async function contarBandeja(): Promise<number> {
+  const d = await getDb();
+  const r = await d.execute("SELECT COUNT(*) AS n FROM solicitudes WHERE asesor_id IS NULL AND estado = 'nueva'");
+  return Number(r.rows[0]?.n ?? 0);
+}
+
+export async function obtenerCasoAbierto(id: number): Promise<(CasoAbierto & { relato: string }) | null> {
+  const d = await getDb();
+  const r = await d.execute({
+    sql: `SELECT ${CAMPOS_CASO_ABIERTO} FROM solicitudes WHERE id = ? AND asesor_id IS NULL AND estado = 'nueva'`,
+    args: [id],
+  });
+  if (!r.rows[0]) return null;
+  const s = decodificarCasoAbierto(r.rows[0]);
+  return {
+    ...s,
+    extracto: s.relato,
+    relato: s.relato,
+  };
+}
+
+/** El UPDATE condicional hace que solo un asesor pueda tomar cada solicitud. */
+export async function tomarSolicitud(id: number, asesorId: number): Promise<boolean> {
+  const d = await getDb();
+  const r = await d.execute({
+    sql: "UPDATE solicitudes SET asesor_id = ?, actualizado_en = datetime('now') WHERE id = ? AND asesor_id IS NULL AND estado = 'nueva'",
+    args: [asesorId, id],
+  });
+  return r.rowsAffected === 1;
 }
 
 export async function obtenerSolicitudPorCodigo(codigo: string): Promise<Solicitud | null> {

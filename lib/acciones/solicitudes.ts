@@ -12,9 +12,10 @@ import { usuarioActual } from "../auth";
 import { ipActual } from "../guards";
 import { permitir } from "../ratelimit";
 import { limpiarDatosPersonales } from "../limpiar";
-import { asignarAsesor, obtenerAsesorPublico, registrarEvento } from "../datos";
+import { obtenerAsesorPublico, registrarEvento } from "../datos";
 import { datosDeForm, erroresPorCampo, esquemaSolicitud, type EstadoForm } from "../validators";
 import { leerTerminos } from "../terminos";
+import { avisarCasoAbierto } from "../alertas";
 
 export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<EstadoForm> {
   const datos = datosDeForm(fd);
@@ -45,8 +46,9 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
     return { error: "Enviaste varias solicitudes seguidas. Espera un rato antes de enviar otra.", valores };
   }
 
-  const asesor = s.asesor === "auto" ? await asignarAsesor(s.materia) : await obtenerAsesorPublico(s.asesor);
-  if (!asesor) return { error: "Ese asesor ya no está disponible. Elige otro.", valores };
+  const asesor = s.asesor === "auto" ? null : await obtenerAsesorPublico(s.asesor);
+  const abierta = s.asesor === "auto";
+  if (!abierta && !asesor) return { error: "Ese asesor ya no está disponible. Elige otro.", valores };
 
   const usuario = await usuarioActual();
   const clienteId = usuario?.rol === "cliente" ? usuario.id : null;
@@ -66,7 +68,7 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
       args: [
         codigo,
         codigoSeguimiento,
-        asesor.usuarioId,
+        asesor?.usuarioId ?? null,
         clienteId,
         s.materia,
         s.region,
@@ -90,9 +92,13 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
   // Los correos salen después de responder: la persona no espera por ellos.
   after(async () => {
     const d = await getDb();
-    const f = (await d.execute({ sql: "SELECT email FROM usuarios WHERE id = ?", args: [asesor.usuarioId] })).rows[0];
-    if (f) await correos.nuevaSolicitud(String(f.email), nombreMateria(s.materia), `${urlSitio()}/panel/solicitudes/${id}`);
-    await correos.confirmacion(s.email, `${urlSitio()}/seguimiento/${codigo}`);
+    if (asesor) {
+      const f = (await d.execute({ sql: "SELECT email FROM usuarios WHERE id = ?", args: [asesor.usuarioId] })).rows[0];
+      if (f) await correos.nuevaSolicitud(String(f.email), nombreMateria(s.materia), `${urlSitio()}/panel/solicitudes/${id}`);
+    } else {
+      await avisarCasoAbierto(id);
+    }
+    await correos.confirmacion(s.email, `${urlSitio()}/seguimiento/${codigo}`, abierta);
   });
   redirect(`/seguimiento/${codigo}?nueva=1`);
 }

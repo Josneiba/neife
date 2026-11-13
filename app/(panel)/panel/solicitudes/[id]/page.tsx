@@ -18,7 +18,7 @@ import {
 import { auditar } from "@/lib/db";
 import { estadoAbogado, faltantes, nombreEtapa, nombreResultado, RESULTADOS, siguientePaso } from "@/lib/etapas";
 import { fechaHora, folio } from "@/lib/formato";
-import { nombreMateria, nombreOrigen, nombreUrgencia } from "@/lib/materias";
+import { MATERIAS, nombreMateria, nombreOrigen, nombreUrgencia } from "@/lib/materias";
 import {
   aceptarSolicitud,
   agregarNota,
@@ -30,6 +30,7 @@ import {
   fijarContacto,
   crearInforme,
   derivarSolicitud,
+  devolverABandeja,
   rechazarSolicitud,
   registrarAutorizacion,
 } from "@/lib/acciones/panel";
@@ -94,6 +95,12 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
           <Link href="/panel" className="btn btn-secundario btn-chico">
             Casos
           </Link>
+          <a href={`/api/expediente/${s.id}/pdf`} target="_blank" rel="noopener noreferrer" className="btn btn-chico">
+            <Icono nombre="informe" tam={15} /> Expediente PDF
+          </a>
+          <a href={`/api/expediente/${s.id}/pdf?para=persona&descargar=1`} className="btn btn-secundario btn-chico" title="Copia sin notas internas, lista para enviar a la persona">
+            Copia para la persona
+          </a>
           {informe ? (
             <Link href={`/panel/informes/${informe.id}`} className="btn btn-secundario btn-chico">
               <Icono nombre="informe" tam={15} /> Informe
@@ -209,6 +216,22 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                     </BotonEnviar>
                   </form>
                 )}
+                {s.estado === "aceptada" && !informe ? (
+                  <details className="pasar">
+                    <summary className="btn btn-secundario btn-chico">Pasar a otro asesor</summary>
+                    <form action={devolverABandeja} className="pasar-panel">
+                      <input type="hidden" name="id" value={s.id} />
+                      <p>El caso volverá a la bandeja y avisaremos a la persona.</p>
+                      <label htmlFor="materia-devolver">Materia que corresponde</label>
+                      <select id="materia-devolver" name="materia" defaultValue={s.materia}>
+                        {MATERIAS.map((materia) => (
+                          <option key={materia.clave} value={materia.clave}>{materia.nombre}</option>
+                        ))}
+                      </select>
+                      <BotonEnviar className="btn btn-chico" enviando="Devolviendo…">Devolver a la bandeja</BotonEnviar>
+                    </form>
+                  </details>
+                ) : null}
               </div>
             </div>
           ) : null}

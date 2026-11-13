@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ codigo: string
   const solicitud = await obtenerSolicitudPorCodigo(codigo);
   if (!solicitud || !["entregada", "derivada", "cerrada"].includes(solicitud.estado)) return new Response("No encontrado", { status: 404 });
   const informe = await obtenerInformePorSolicitud(solicitud.id);
-  const perfil = await obtenerPerfil(solicitud.asesorId);
+  const perfil = solicitud.asesorId ? await obtenerPerfil(solicitud.asesorId) : null;
   if (!informe || !informe.entregado || !perfil) return new Response("No encontrado", { status: 404 });
 
   const buf = await generarPdf({

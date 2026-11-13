@@ -55,6 +55,9 @@ export default function Inicio() {
           ))}
         </ul>
         <p className="ayuda">¿Otra cosa? <Link href="/asesoria/solicitar?materia=otra">Cuéntala igual</Link>.</p>
+        <p className="ayuda">
+          Guías gratuitas con pasos, plazos y cartas modelo: <Link href="/guia/laboral">laboral</Link> · <Link href="/guia/familia">familia</Link> · <Link href="/guia/arriendo">arriendos</Link> · <Link href="/guia/consumidor">consumidor</Link>.
+        </p>
       </section>
 
       <section className="contenedor inicio-sec" id="como" aria-labelledby="t-como">

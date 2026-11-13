@@ -5,7 +5,8 @@ import { METRICAS, nombreEtapaCrm, nombreResultadoDerivacion } from "@/lib/crm/c
 import { etiquetaPeriodo, fechaDMA, hoyLocal, inicioPeriodo, sumarPeriodos } from "@/lib/crm/fechas";
 import { listarPersonas } from "@/lib/crm/servicio";
 import { evaluarCartera, listarDerivaciones, montoAcordado, resumenPorColega } from "@/lib/crm/servicio-seguimiento";
-import { resumenMensual } from "@/lib/crm/servicio-informes";
+import { embudoPorOrigen, resumenMensual } from "@/lib/crm/servicio-informes";
+import { resumenResenas, textoTiempo, tiempoRespuestaHoras } from "@/lib/resenas";
 import { nombreMateria } from "@/lib/materias";
 import { BarraApp } from "@/components/panel/BarraApp";
 import { BarraProgreso, Estrellas, Pestanas, Seccion, Vacio } from "@/components/crm/Piezas";
@@ -18,13 +19,14 @@ const pesos = (n: number) => `$${n.toLocaleString("es-CL")}`;
 export default async function Informes({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const u = await requerirAbogado();
   const sp = await searchParams;
-  const t = ["derivaciones", "satisfaccion", "mes"].includes(sp.t ?? "") ? (sp.t as string) : "casos";
+  const t = ["derivaciones", "satisfaccion", "mes", "origen"].includes(sp.t ?? "") ? (sp.t as string) : "casos";
   const hoy = hoyLocal();
   const pestanas = [
     { href: "/panel/crm/informes", texto: "Casos", activa: t === "casos" },
     { href: "/panel/crm/informes?t=derivaciones", texto: "Derivaciones", activa: t === "derivaciones" },
     { href: "/panel/crm/informes?t=satisfaccion", texto: "Conformidad", activa: t === "satisfaccion" },
     { href: "/panel/crm/informes?t=mes", texto: "Mes", activa: t === "mes" },
+    { href: "/panel/crm/informes?t=origen", texto: "Origen", activa: t === "origen" },
   ];
 
   let cuerpo: React.ReactNode = null;
@@ -161,6 +163,45 @@ export default async function Informes({ searchParams }: { searchParams: Promise
           </Seccion>
         ) : null}
       </>
+    );
+  } else if (t === "origen") {
+    const [embudo, horas, resenas] = await Promise.all([
+      embudoPorOrigen(u.id),
+      tiempoRespuestaHoras(u.id, 1),
+      resumenResenas(u.id),
+    ]);
+    const total = embudo.filas.reduce((suma, fila) => suma + fila.total, 0);
+    cuerpo = (
+      <Seccion titulo="Origen de tus clientes · últimos 90 días">
+        <div className="or-kpis">
+          <div><b>{embudo.tomados30}</b><span>Casos tomados (30 días)</span></div>
+          <div><b>{horas === null ? "—" : textoTiempo(horas)}</b><span>En tomar un caso</span></div>
+          <div><b>{resenas.total ? `${resenas.promedio} ★` : "—"}</b><span>{resenas.total ? `${resenas.total} reseña${resenas.total === 1 ? "" : "s"}` : "Sin reseñas aún"}</span></div>
+        </div>
+        {embudo.filas.length === 0 ? (
+          <Vacio>Todavía no hay clientes nuevos en este período.</Vacio>
+        ) : (
+          <table className="or-tabla">
+            <thead>
+              <tr><th>Origen</th><th>Clientes</th><th>% del total</th><th>Avanzaron</th><th aria-label="Conversión" /></tr>
+            </thead>
+            <tbody>
+              {embudo.filas.map((fila) => {
+                const conversion = fila.total ? Math.round((fila.avanzaron / fila.total) * 100) : 0;
+                return (
+                  <tr key={fila.origen}>
+                    <td>{fila.origen}</td>
+                    <td>{fila.total}</td>
+                    <td>{total ? Math.round((fila.total / total) * 100) : 0} %</td>
+                    <td>{fila.avanzaron} <small>({conversion} %)</small></td>
+                    <td><BarraProgreso pct={conversion} etiqueta={`Conversión de ${fila.origen}`} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Seccion>
     );
   } else {
     const mesActual = inicioPeriodo("mes", hoy);

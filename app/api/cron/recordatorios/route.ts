@@ -40,5 +40,21 @@ export async function GET(req: NextRequest) {
     ].filter(Boolean);
     if (await correos.recordatorio(String(f.email), partes.join("\n"), `${urlSitio()}/panel`)) enviados++;
   }
-  return NextResponse.json({ asesores: r.rows.length, enviados });
+  const abiertas = await d.execute(
+    "SELECT COUNT(*)::int AS n FROM solicitudes WHERE asesor_id IS NULL AND estado = 'nueva' AND creado_en < ahora(-1)",
+  );
+  const sinTomar = Number(abiertas.rows[0]?.n ?? 0);
+  let avisadosBandeja = 0;
+  if (sinTomar > 0) {
+    const todos = await d.execute("SELECT email FROM usuarios WHERE rol = 'abogado' AND estado = 'activo'");
+    for (const f of todos.rows) {
+      const enviado = await correos.recordatorio(
+        String(f.email),
+        `Hay ${sinTomar} solicitud${sinTomar === 1 ? "" : "es"} en la bandeja que nadie ha tomado hace más de 24 horas. Las personas están esperando.`,
+        `${urlSitio()}/panel/bandeja`,
+      );
+      if (enviado) avisadosBandeja++;
+    }
+  }
+  return NextResponse.json({ asesores: r.rows.length, enviados, sinTomar, avisadosBandeja });
 }

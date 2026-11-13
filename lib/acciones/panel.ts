@@ -14,6 +14,7 @@ import {
   obtenerInformePorSolicitud,
   obtenerSolicitudAsesor,
   registrarEvento,
+  tomarSolicitud,
   type ContenidoInforme,
 } from "../datos";
 import { nombreEtapa, RESULTADOS, nombreResultado } from "../etapas";
@@ -24,6 +25,8 @@ import { conMensaje } from "../errores";
 import { segura } from "../errores";
 import { datosDeForm, erroresPorCampo, esquemaContactoRapido, esquemaPerfil, type EstadoForm } from "../validators";
 import { importarSolicitudes } from "../crm/servicio";
+import { avisarAvanceSiCorresponde } from "../avance-correo";
+import { avisarCasoAbierto } from "../alertas";
 
 function entero(v: unknown): number {
   const n = Number(v);
@@ -36,14 +39,14 @@ function entero(v: unknown): number {
 const AVISOS: Record<string, string> = {
   aceptada: "El asesor aceptó tu solicitud y te va a contactar.",
   derivada: "Tu caso fue derivado a un abogado de la materia. Pronto se pondrá en contacto contigo.",
-  cerrada: "Tu caso quedó cerrado. Recuerda descargar tu informe: tus datos se borran en unos días, salvo que pidas guardarlos.",
+  cerrada: "Tu caso quedó cerrado. Recuerda descargar tu informe: tus datos se borran en unos días, salvo que pidas guardarlos. Si te sirvió, puedes dejar una reseña en el mismo enlace.",
 };
 
 async function cambiarEstado(id: number, asesorId: number, estado: string, motivo = "") {
   const d = await getDb();
   await d.execute({
-    sql: "UPDATE solicitudes SET estado = ?, motivo_rechazo = ?, actualizado_en = datetime('now') WHERE id = ? AND asesor_id = ?",
-    args: [estado, motivo, id, asesorId],
+    sql: "UPDATE solicitudes SET estado = ?, motivo_rechazo = ?, actualizado_en = datetime('now'), tomada_en = CASE WHEN tomada_en = '' AND ? <> 'nueva' THEN datetime('now') ELSE tomada_en END WHERE id = ? AND asesor_id = ?",
+    args: [estado, motivo, estado, id, asesorId],
   });
   await auditar(asesorId, `solicitud_${estado}`, "solicitud", id);
   await registrarEvento(id, "etapa", nombreEtapa(estado));
@@ -69,6 +72,55 @@ export async function aceptarSolicitud(fd: FormData) {
   await agregarPendientes(id, [...plantilla.datos, ...plantilla.documentos]);
   revalidatePath("/panel", "layout");
   redirect(`/panel/solicitudes/${id}`);
+}
+
+export async function tomarCaso(fd: FormData) {
+  const u = await requerirAbogado();
+  const id = entero(fd.get("id"));
+  if (!id || !(await tomarSolicitud(id, u.id))) redirect("/panel/bandeja?ya=1");
+  const s = await obtenerSolicitudAsesor(id, u.id);
+  if (!s) redirect("/panel/bandeja");
+  await registrarEvento(id, "nota", "Un asesor tomó el caso desde la bandeja.");
+  await cambiarEstado(id, u.id, "aceptada");
+  await importarSolicitudes(u.id, id);
+  const plantilla = PLANTILLAS[esMateria(s.materia) ? s.materia : "otra"];
+  await agregarPendientes(id, [...plantilla.datos, ...plantilla.documentos]);
+  revalidatePath("/panel", "layout");
+  redirect(`/panel/solicitudes/${id}`);
+}
+
+export async function devolverABandeja(fd: FormData) {
+  const { s, u } = await casoPropio(fd);
+  const informe = await obtenerInformePorSolicitud(s.id);
+  if (s.estado !== "aceptada" || informe) redirect(`/panel/solicitudes/${s.id}?aviso=devolver`);
+  const materia = String(fd.get("materia") ?? "");
+  const d = await getDb();
+  const cambio = await d.execute({
+    sql: "UPDATE solicitudes SET asesor_id = NULL, estado = 'nueva', tomada_en = '', materia = ?, actualizado_en = datetime('now') WHERE id = ? AND asesor_id = ? AND estado = 'aceptada'",
+    args: [esMateria(materia) ? materia : s.materia, s.id, u.id],
+  });
+  if (cambio.rowsAffected !== 1) redirect(`/panel/solicitudes/${s.id}?aviso=devolver`);
+  await d.batch([
+    {
+      sql: "UPDATE crm_personas SET etapa = 'perdido' WHERE solicitud_id = ? AND abogado_id = ?",
+      args: [s.id, u.id],
+    },
+    { sql: "DELETE FROM pendientes WHERE solicitud_id = ?", args: [s.id] },
+  ]);
+  await registrarEvento(s.id, "nota", "Tu caso volvió a la bandeja para que lo tome un asesor de la materia que corresponde.");
+  await auditar(u.id, "solicitud_devuelta", "solicitud", s.id);
+  after(async () => {
+    await avisarCasoAbierto(s.id, u.id);
+    if (s.email.includes("@")) {
+      await correos.avance(
+        s.email,
+        "Tu caso volvió a la bandeja para que lo tome un asesor de la materia que corresponde. No tienes que hacer nada: te avisaremos apenas lo tome.",
+        `${urlSitio()}/seguimiento/${s.codigo}`,
+      );
+    }
+  });
+  revalidatePath("/panel", "layout");
+  redirect("/panel/bandeja");
 }
 
 export async function rechazarSolicitud(fd: FormData) {
@@ -143,7 +195,7 @@ export async function agregarPendiente(fd: FormData) {
 }
 
 export async function alternarPendiente(fd: FormData) {
-  const { s } = await casoPropio(fd);
+  const { s, u } = await casoPropio(fd);
   const pid = entero(fd.get("pendiente"));
   const d = await getDb();
   await d.execute({
@@ -151,6 +203,9 @@ export async function alternarPendiente(fd: FormData) {
     args: [pid, s.id],
   });
   await d.execute({ sql: "UPDATE solicitudes SET actualizado_en = datetime('now') WHERE id = ?", args: [s.id] });
+  after(async () => {
+    await avisarAvanceSiCorresponde(s.id, u.id);
+  });
   revalidatePath(`/panel/solicitudes/${s.id}`);
   redirect(`/panel/solicitudes/${s.id}`);
 }
@@ -304,6 +359,9 @@ export async function guardarInforme(
     args: [cifrar(JSON.stringify(contenido), "informe.contenido"), accion, informeId, u.id],
   });
   await auditar(u.id, `informe_${accion}`, "informe", informeId);
+  after(async () => {
+    await avisarAvanceSiCorresponde(informe.solicitudId, u.id);
+  });
   revalidatePath(`/panel/informes/${informeId}`);
   revalidatePath("/panel/informes");
   return {

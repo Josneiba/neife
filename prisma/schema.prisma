@@ -24,6 +24,7 @@ model Usuarios {
   tokens              Tokens[]
   identidades         Identidades[]
   documentos          Documentos[]  @relation("DocumentoAsesor")
+  resenas             Resenas[]
 
   @@map("usuarios")
 }
@@ -40,6 +41,8 @@ model Perfiles {
   instrucciones_pago String   @default("")
   publicado          Int      @default(1)
   meta_semanal       Int      @default(3)
+  alertas            String   @default("")
+  horario            String   @default("")
   usuario            Usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@map("perfiles")
@@ -49,7 +52,9 @@ model Solicitudes {
   id                  Int           @id @default(autoincrement())
   codigo              String        @unique
   codigo_seguimiento  String        @unique(map: "idx_solicitudes_codigo_seguimiento") @default(dbgenerated("('CASO-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)) || '-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)) || '-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)))"))
-  asesor_id           Int
+  asesor_id           Int?
+  tomada_en           String        @default("")
+  ultimo_aviso        String        @default("")
   cliente_id          Int?
   materia             String
   region              String        @default("")
@@ -72,12 +77,13 @@ model Solicitudes {
   anonimizada_en      String        @default("")
   creado_en           String        @default(dbgenerated("ahora()"))
   actualizado_en      String        @default(dbgenerated("ahora()"))
-  asesor              Usuarios      @relation("SolicitudAsesor", fields: [asesor_id], references: [id])
+  asesor              Usuarios?     @relation("SolicitudAsesor", fields: [asesor_id], references: [id])
   cliente             Usuarios?     @relation("SolicitudCliente", fields: [cliente_id], references: [id])
   informe             Informes?
   pendientes          Pendientes[]
   seguimiento         Seguimiento[]
   documentos          Documentos[]
+  resena              Resenas?
 
   @@index([asesor_id, estado], map: "idx_solicitudes_asesor")
   @@index([cliente_id], map: "idx_solicitudes_cliente")
@@ -225,4 +231,19 @@ model Documentos {
 
   @@index([solicitud_id], map: "idx_documentos_solicitud")
   @@map("documentos")
+}
+
+model Resenas {
+  id           Int         @id @default(autoincrement())
+  asesor_id    Int
+  solicitud_id Int?        @unique
+  estrellas    Int
+  comentario   String      @default("")
+  publicada    Int         @default(1)
+  creado_en    String      @default(dbgenerated("ahora()"))
+  asesor       Usuarios    @relation(fields: [asesor_id], references: [id], onDelete: Cascade)
+  solicitud    Solicitudes? @relation(fields: [solicitud_id], references: [id], onDelete: SetNull)
+
+  @@index([asesor_id], map: "idx_resenas_asesor")
+  @@map("resenas")
 }

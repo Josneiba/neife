@@ -22,7 +22,7 @@ const ANCHO = ANCHO_PAGINA - MARGEN * 2;
 const LIMITE_ARTICULO = 3000;
 
 /** Las fuentes estándar del PDF solo cubren caracteres latinos; el resto se descarta. */
-function limpio(t: string): string {
+export function limpio(t: string): string {
   return t
     .replace(/[‐‑‒]/g, "-")
     .replace(/ /g, " ")
@@ -42,13 +42,11 @@ export type DatosPdf = {
 };
 
 function logo(doc: PDFKit.PDFDocument, x: number, y: number) {
-  // Logo oficial sobre una placa crema (la bandeja del logo es pizarra y se perdería en el encabezado oscuro).
-  doc.roundedRect(x, y, 86, 44, 6).fill(C.crema);
   try {
     const ruta = join(process.cwd(), "public", "logo-neife-chico.png");
-    if (existsSync(ruta)) doc.image(ruta, x + 6, y + 6, { fit: [74, 32], align: "center", valign: "center" });
+    if (existsSync(ruta)) doc.image(ruta, x, y, { fit: [68, 44], align: "center", valign: "center" });
   } catch {
-    doc.font("Helvetica-Bold").fontSize(14).fillColor(C.pizarra).text("Neife", x + 6, y + 15, { lineBreak: false });
+    doc.font("Helvetica-Bold").fontSize(14).fillColor(C.crema).text("Neife", x, y + 15, { lineBreak: false });
   }
 }
 

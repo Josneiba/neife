@@ -132,7 +132,7 @@ a {
   border: 0;
 }
 .logo-img {
-  height: 44px;
+  height: 58px;
 }
 .encabezado .nav {
   gap: 6px;
@@ -179,7 +179,7 @@ a {
     min-height: 64px;
   }
   .logo-img {
-    height: 34px;
+    height: 48px;
   }
   .encabezado .nav a.nav-icono,
   .encabezado .nav-boton.nav-icono {
@@ -765,4 +765,124 @@ legend {
 }
 .inicio-datos > * {
   position: relative;
+}
+
+/* La marca no se encoge en tablet y la navegación cede espacio. */
+.logo { flex: none; }
+@media (min-width: 721px) and (max-width: 1100px) {
+  .encabezado .btn.nav-opcional,
+  .encabezado .nav-sep { display: none; }
+  .encabezado .nav { gap: 2px; }
+  .encabezado .nav a:not(.btn),
+  .encabezado .nav-boton { font-size: 0.72rem; letter-spacing: 0.1em; padding: 10px 9px; }
+  .encabezado .btn-chico { padding: 9px 12px; font-size: 0.7rem; letter-spacing: 0.1em; }
+  .encabezado-interior { gap: 12px; }
+}
+@media (min-width: 721px) and (max-width: 800px) {
+  .encabezado .nav a:not(.btn):not(.nav-icono) { display: none; }
+}
+@media (max-width: 1100px) {
+  .biblioteca-hero { display: block; min-height: 0; padding-bottom: 0; }
+  .estante-lateral { display: none; }
+  .fila-libros-hero { display: flex; }
+  .bh-centro { max-width: 720px; margin: 36px auto 40px; padding: 38px 36px 34px; }
+}
+@media (max-width: 860px) {
+  .bh-centro { margin: 28px 20px 32px; max-width: none; }
+}
+@media (max-width: 720px) {
+  .bh-centro { margin: 24px 14px 28px; padding: 28px 20px 26px; }
+}
+@media (min-width: 721px) and (max-width: 1100px) {
+  .situaciones { height: 340px; padding: 28px 22px 0; }
+  .situaciones li:nth-child(1) { height: 300px; }
+  .situaciones li:nth-child(2) { height: 272px; }
+  .situaciones li:nth-child(3) { height: 306px; }
+  .situaciones li:nth-child(4) { height: 280px; }
+  .situaciones li:nth-child(5) { height: 298px; }
+  .situaciones li:nth-child(6) { height: 284px; }
+  .situaciones a { font-size: 1.3rem; padding: 50px 0 44px; }
+  .inicio-pasos,
+  .inicio-dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .contenedor { padding-left: 32px; padding-right: 32px; }
+}
+@media (max-width: 720px) {
+  .inicio-pasos,
+  .inicio-dos { grid-template-columns: 1fr; }
+}
+@media (min-width: 721px) and (max-width: 1100px) {
+  .tu-caso { max-width: 760px; }
+}
+@media (max-width: 480px) {
+  .contenedor { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 860px) {
+  .pie-interior { flex-direction: column; gap: 22px; }
+}
+html, body { max-width: 100%; overflow-x: clip; }
+img, svg, video, table { max-width: 100%; }
+
+/* Seguimiento: reserva de hora y reseña */
+.seg-tarjeta { margin: 22px 0; padding: 16px 18px 18px; background: var(--hoja); border: 1px solid var(--pergamino-borde); }
+.seg-tarjeta h2 { margin: 0 0 12px; font-size: 1.05rem; padding-bottom: 8px; border-bottom: 1px solid var(--pergamino-borde); }
+.seg-nota { margin: 0; color: var(--pizarra); }
+.seg-reservada { margin: 0; display: grid; gap: 2px; }
+.seg-reservada span { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--azul-texto); }
+.seg-reservada strong { font-size: 1.2rem; text-transform: capitalize; }
+.seg-reservada small { color: var(--pizarra); }
+.reserva, .resena { display: grid; gap: 12px; }
+.reserva-dias { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.reserva-dia { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 6px; align-content: start; }
+.reserva-dia legend { float: left; width: 100%; padding: 6px 0; margin-bottom: 6px; text-align: center; font-family: var(--f-titulo, inherit); font-weight: 600; font-size: .86rem; color: var(--crema-claro); background: var(--cafe-madera); text-transform: capitalize; }
+.reserva-hora { position: relative; display: block; }
+.reserva-hora input { position: absolute; opacity: 0; inset: 0; cursor: pointer; width: 100%; height: 100%; margin: 0; }
+.reserva-hora span { display: block; text-align: center; padding: 7px 4px; border: 1px solid var(--pergamino-borde); background: var(--pergamino); font-weight: 600; font-size: .88rem; }
+.reserva-hora input:checked + span { background: var(--pizarra); color: #fff; border-color: var(--pizarra); }
+.reserva-hora input:focus-visible + span { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.resena-estrellas { display: flex; gap: 2px; flex-direction: row-reverse; justify-content: flex-end; }
+.resena-estrellas label { position: relative; cursor: pointer; font-size: 2rem; line-height: 1; color: var(--pergamino-borde); }
+.resena-estrellas input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.resena-estrellas label:hover, .resena-estrellas label:hover ~ label, .resena-estrellas label:has(input:checked), .resena-estrellas label:has(input:checked) ~ label { color: #d9a400; }
+.resena-estrellas input:focus-visible ~ span { outline: 2px solid var(--azul-texto); }
+.solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.perfil-resena { margin: 6px 0 0; font-size: .9rem; color: var(--cafe-hondo); }
+.perfil-resena span { color: var(--amarillo-oscuro, #b8902b); }
+.perfil-cita { margin: 8px 0 0; padding: 6px 0 6px 14px; border-left: 3px solid var(--pergamino-borde); font-family: var(--f-texto, inherit); font-style: italic; }
+.perfil-cita small { font-style: normal; color: var(--pizarra); }
+
+/* Guías gratuitas */
+.guia { max-width: 1080px; padding-top: 36px; padding-bottom: 56px; }
+.guia-cab { max-width: 760px; margin-bottom: 28px; }
+.guia-etiqueta { margin: 0 0 6px; font-family: var(--f-titulo, inherit); letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; color: var(--rosa-texto); }
+.guia h1 { margin: 0 0 10px; line-height: 1.1; }
+.guia h2 { margin: 0 0 12px; font-size: 1.1rem; letter-spacing: .06em; text-transform: uppercase; }
+.guia-bajada { margin: 0; font-size: 1.12rem; line-height: 1.5; color: var(--pizarra); }
+.guia-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.guia-pasos { list-style: none; counter-reset: paso; margin: 0; padding: 0; display: grid; gap: 10px; }
+.guia-pasos li { counter-increment: paso; display: grid; gap: 2px; padding: 12px 14px 12px 58px; position: relative; background: var(--hoja); border: 1px solid var(--pergamino-borde); line-height: 1.45; }
+.guia-pasos li::before { content: counter(paso, upper-roman); position: absolute; left: 0; top: 0; bottom: 0; width: 44px; display: grid; place-items: center; background: var(--cafe-madera); color: var(--crema-claro); font-family: var(--f-titulo, inherit); font-size: 1rem; }
+.guia-pasos strong { font-size: 1.02rem; }
+.guia-pasos span { color: var(--pizarra); font-size: .98rem; }
+.guia-lado { display: grid; gap: 14px; position: sticky; top: 90px; }
+.guia-nota { background: var(--hoja); border: 1px solid var(--pergamino-borde); padding: 14px 16px; }
+.guia-nota h2 { font-size: .9rem; margin-bottom: 8px; }
+.guia-nota ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: .96rem; line-height: 1.4; }
+.guia-plazo { background: #fff6cc; border-color: var(--amarillo); }
+.guia-check li { padding-left: 24px; position: relative; }
+.guia-check li::before { content: "✓"; position: absolute; left: 2px; color: var(--azul-texto); font-weight: 700; }
+.guia-cta { background: var(--pizarra); border-color: var(--pizarra); color: var(--crema-claro); }
+.guia-cta h2 { color: var(--crema-claro); }
+.guia-cta p { margin: 0 0 10px; font-size: .95rem; }
+.guia-carta { margin-top: 36px; background: var(--pergamino); border: 1px solid var(--pergamino-borde); padding: 20px 22px 24px; }
+.guia-carta-cab { margin-bottom: 14px; }
+.guia-carta-cab h2 { margin: 0 0 4px; text-transform: none; letter-spacing: 0; font-size: 1.3rem; }
+.guia-carta-cab p { margin: 0; color: var(--pizarra); font-size: .95rem; }
+.guia-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+.guia-form .campo { margin: 0; }
+.guia-ancho { grid-column: 1 / -1; }
+.guia-aviso { margin: 28px 0 0; font-size: .9rem; color: var(--pizarra); font-style: italic; }
+@media (max-width: 860px) {
+  .guia-grid { grid-template-columns: 1fr; gap: 22px; }
+  .guia-lado { position: static; }
+  .guia-form { grid-template-columns: 1fr; }
 }

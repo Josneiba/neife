@@ -9,6 +9,15 @@ import { fechaLarga, folio, pesos } from "@/lib/formato";
 import { nombreMateria } from "@/lib/materias";
 import { borrarMisDatos, cambiarConservacion } from "@/lib/acciones/solicitudes";
 import { DIAS_DE_GRACIA } from "@/lib/privacidad";
+import { huecosLibres, reservaVigente } from "@/lib/agenda-publica";
+import { textoTiempo, tiempoRespuestaHoras, yaTieneResena } from "@/lib/resenas";
+import { enviarResena, reservarMiHora } from "@/lib/acciones/avisos";
+import { nombreDiaLargo } from "@/lib/crm/fechas";
+
+const diaCorto = (fecha: string) =>
+  new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+    .format(new Date(`${fecha}T12:00:00Z`))
+    .replace(".", "");
 
 export const metadata: Metadata = {
   title: "Seguimiento de tu solicitud",
@@ -39,13 +48,23 @@ export default async function Seguimiento({
       </div>
     );
   }
-  const perfil = await obtenerPerfil(s.asesorId);
+  const perfil = s.asesorId ? await obtenerPerfil(s.asesorId) : null;
   const informe = ["entregada", "derivada", "cerrada"].includes(s.estado) ? await obtenerInformePorSolicitud(s.id) : null;
   const hayInforme = Boolean(informe?.entregado);
   const pendientes = ["aceptada", "informe"].includes(s.estado)
     ? (await listarPendientes(s.id)).filter((p) => !p.hecho)
     : [];
-  const asesor = perfil?.nombre ?? "El asesor";
+  const asesor = perfil?.nombre ?? (s.asesorId ? "El asesor" : "Un asesor de neife");
+  const puedeReservar = Boolean(s.asesorId) && ["aceptada", "informe", "entregada"].includes(s.estado);
+  const [huecos, reserva, horasRespuesta, resenado] = await Promise.all([
+    puedeReservar && s.asesorId ? huecosLibres(s.asesorId) : Promise.resolve([]),
+    puedeReservar && s.asesorId ? reservaVigente(s.asesorId, s.id) : Promise.resolve(null),
+    s.estado === "nueva" ? tiempoRespuestaHoras() : Promise.resolve(null),
+    ["entregada", "derivada", "cerrada"].includes(s.estado) && s.asesorId ? yaTieneResena(s.id) : Promise.resolve(true),
+  ]);
+  const puedeResenar = Boolean(s.asesorId) &&
+    ["entregada", "derivada", "cerrada"].includes(s.estado) &&
+    !resenado;
 
   return (
     <div className="contenedor pagina-estrecha">
@@ -74,7 +93,20 @@ export default async function Seguimiento({
       </div>
 
       <div style={{ marginTop: 28, display: "grid", gap: 16 }}>
-        {s.estado === "nueva" && <p>{asesor} aún no la revisa. Te escribirá al correo o teléfono que dejaste.</p>}
+        {s.estado === "nueva" && (
+          <p>
+            {s.asesorId
+              ? `${asesor} aún no la revisa. Te escribirá al correo o teléfono que dejaste.`
+              : `Tu solicitud ya está a la vista de todos los asesores de Neife. El primero que la tome te escribirá al correo o teléfono que dejaste.${horasRespuesta !== null ? ` Los casos se están tomando en unas ${textoTiempo(horasRespuesta)}.` : ""}`}
+          </p>
+        )}
+        {s.asesorId && s.estado !== "nueva" && s.estado !== "rechazada" ? (
+          <p>
+            <a href={`/api/seguimiento/${encodeURIComponent(s.codigo)}/avance`} className="btn btn-secundario btn-chico">
+              Descargar el avance de mi caso (PDF)
+            </a>
+          </p>
+        ) : null}
 
         {(s.estado === "aceptada" || s.estado === "informe") && (
           <>
@@ -114,6 +146,73 @@ export default async function Seguimiento({
         )}
         {s.estado === "derivada" && <p>Tu caso fue derivado a un abogado. Él o ella se pondrá en contacto contigo.</p>}
         {s.estado === "cerrada" && <p>Este caso está cerrado.</p>}
+
+        {puedeReservar ? (
+          <section className="seg-tarjeta" aria-labelledby="t-hora">
+            <h2 id="t-hora">Reserva una hora con {asesor}</h2>
+            {sp.hora === "ok" ? <p className="aviso aviso-ok" role="status">Tu hora quedó reservada. Te enviamos la confirmación por correo.</p> : null}
+            {sp.hora === "ocupada" ? <p className="aviso aviso-error" role="alert">Esa hora ya no está libre. Elige otra.</p> : null}
+            {sp.hora === "limite" ? <p className="aviso aviso-error" role="alert">Hiciste muchas reservas hoy. Escríbele a tu asesor.</p> : null}
+            {sp.hora === "ya" ? <p className="aviso aviso-info" role="status">Ya tienes una hora reservada. Si necesitas cambiarla, avísale a tu asesor.</p> : null}
+            {reserva ? (
+              <p className="seg-reservada">
+                <span>Tu próxima hora</span>
+                <strong>{nombreDiaLargo(reserva.fecha)} · {reserva.hora}</strong>
+                <small>Para cambiarla, avísale a tu asesor.</small>
+              </p>
+            ) : huecos.length === 0 ? (
+              <p className="seg-nota">{asesor} no tiene horas abiertas por ahora. Te contactará con los datos que dejaste.</p>
+            ) : (
+              <form action={reservarMiHora} className="reserva">
+                <input type="hidden" name="codigo" value={s.codigo} />
+                <div className="reserva-dias">
+                  {huecos.slice(0, 5).map((dia) => (
+                    <fieldset key={dia.fecha} className="reserva-dia">
+                      <legend>{diaCorto(dia.fecha)}</legend>
+                      {dia.horas.map((hora) => (
+                        <label key={hora} className="reserva-hora">
+                          <input type="radio" name="hora" value={`${dia.fecha}|${hora}`} required />
+                          <span>{hora}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ))}
+                </div>
+                <button type="submit" className="btn btn-primario">Reservar hora elegida</button>
+              </form>
+            )}
+          </section>
+        ) : null}
+
+        {sp.resena === "ok" ? <p className="aviso aviso-ok" role="status">Gracias por tu reseña. Ayuda a otras personas a elegir.</p> : null}
+        {sp.resena === "ya" ? <p className="aviso aviso-info" role="status">Ya recibimos una reseña para este caso o alcanzaste el límite de intentos.</p> : null}
+        {puedeResenar ? (
+          <section className="seg-tarjeta" aria-labelledby="t-resena">
+            <h2 id="t-resena">¿Cómo te fue con {asesor}?</h2>
+            <form action={enviarResena} className="resena">
+              <input type="hidden" name="codigo" value={s.codigo} />
+              <div className="resena-estrellas" role="radiogroup" aria-label="Tu evaluación">
+                {[5, 4, 3, 2, 1].map((estrellas) => (
+                  <label key={estrellas} title={`${estrellas} de 5`}>
+                    <input type="radio" name="estrellas" value={estrellas} required />
+                    <span aria-hidden="true">★</span>
+                    <span className="solo-lector">{estrellas} de 5</span>
+                  </label>
+                ))}
+              </div>
+              <textarea
+                id="comentario"
+                name="comentario"
+                className="entrada"
+                maxLength={400}
+                rows={2}
+                placeholder="Comentario opcional. No escribas nombres ni datos de contacto."
+                aria-label="Comentario opcional"
+              />
+              <button type="submit" className="btn btn-secundario">Enviar reseña</button>
+            </form>
+          </section>
+        ) : null}
 
         {s.estado === "rechazada" && (
           <div className="aviso aviso-error">

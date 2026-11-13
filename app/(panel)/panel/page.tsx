@@ -76,8 +76,8 @@ export default async function Casos({ searchParams }: { searchParams: Promise<Re
     <>
       <header className="p-cab">
         <div className="p-cab-izq">
-          <h1>Casos</h1>
-          <span className="p-sub">Ordenados por urgencia</span>
+          <h1>Mis casos</h1>
+          <span className="p-sub">Tus casos, ordenados por urgencia · <Link href="/panel/bandeja">Ver solicitudes abiertas</Link></span>
         </div>
         <ContactoRapido />
       </header>

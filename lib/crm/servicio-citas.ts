@@ -67,34 +67,66 @@ function validar(c: NuevaCita): { horaFin: string } {
   return { horaFin: fin };
 }
 
-/** Crea la cita. Devuelve su id y cuántas otras citas se cruzan con esa hora (para avisar, no para impedir). */
-export async function crearCita(abogadoId: number, c: NuevaCita): Promise<{ id: number; cruces: number }> {
+/**
+ * Crea una cita bajo un bloqueo por asesor y fecha. Las reservas públicas no permiten cruces;
+ * el CRM conserva su comportamiento de avisar, pero permitir, citas superpuestas.
+ */
+async function guardarCita(
+  abogadoId: number,
+  c: NuevaCita,
+  permitirCruce: boolean,
+): Promise<{ id: number; cruces: number } | null> {
   const { horaFin } = validar(c);
   if (c.personaId) {
     const p = await obtenerPersona(c.personaId, abogadoId);
     if (!p) throw new ErrorCrm("No encontramos a esa persona.");
   }
   const d = await getDb();
-  const cruces = await d.execute({
-    sql: `SELECT COUNT(*)::int AS n FROM crm_citas WHERE abogado_id = ? AND fecha = ? AND estado <> 'cancelada' AND hora_ini < ? AND hora_fin > ?`,
-    args: [abogadoId, c.fecha, horaFin, c.horaIni],
-  });
-  const r = await d.execute({
-    sql: `INSERT INTO crm_citas (abogado_id, persona_id, tipo, titulo_enc, nota_enc, canal, fecha, hora_ini, hora_fin)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-    args: [
-      abogadoId,
-      c.personaId ?? null,
-      c.tipo,
-      c.titulo?.trim() ? cifrar(c.titulo.trim(), "crm.cita") : "",
-      c.nota?.trim() ? cifrar(c.nota.trim(), "crm.cita") : "",
-      c.canal ?? "",
-      c.fecha,
-      c.horaIni,
-      horaFin,
-    ],
-  });
-  return { id: Number(r.rows[0].id), cruces: Number(cruces.rows[0]?.n ?? 0) };
+  const insertar = permitirCruce
+    ? `INSERT INTO crm_citas (abogado_id, persona_id, tipo, titulo_enc, nota_enc, canal, fecha, hora_ini, hora_fin)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
+    : `INSERT INTO crm_citas (abogado_id, persona_id, tipo, titulo_enc, nota_enc, canal, fecha, hora_ini, hora_fin)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM crm_citas
+           WHERE abogado_id = ? AND fecha = ? AND estado <> 'cancelada' AND hora_ini < ? AND hora_fin > ?
+        )
+       RETURNING id`;
+  const args: unknown[] = [
+    abogadoId,
+    c.personaId ?? null,
+    c.tipo,
+    c.titulo?.trim() ? cifrar(c.titulo.trim(), "crm.cita") : "",
+    c.nota?.trim() ? cifrar(c.nota.trim(), "crm.cita") : "",
+    c.canal ?? "",
+    c.fecha,
+    c.horaIni,
+    horaFin,
+  ];
+  if (!permitirCruce) args.push(abogadoId, c.fecha, horaFin, c.horaIni);
+  const resultados = await d.batch([
+    { sql: "SELECT pg_advisory_xact_lock(hashtext(?), hashtext(?))", args: [String(abogadoId), c.fecha] },
+    {
+      sql: `SELECT COUNT(*)::int AS n FROM crm_citas WHERE abogado_id = ? AND fecha = ? AND estado <> 'cancelada' AND hora_ini < ? AND hora_fin > ?`,
+      args: [abogadoId, c.fecha, horaFin, c.horaIni],
+    },
+    { sql: insertar, args },
+  ]);
+  const insertada = resultados[2].rows[0];
+  if (!insertada) return null;
+  return { id: Number(insertada.id), cruces: Number(resultados[1].rows[0]?.n ?? 0) };
+}
+
+/** Crea una cita manual. Devuelve su id y cuántas otras citas se cruzan con esa hora. */
+export async function crearCita(abogadoId: number, c: NuevaCita): Promise<{ id: number; cruces: number }> {
+  const creada = await guardarCita(abogadoId, c, true);
+  if (!creada) throw new ErrorCrm("No se pudo guardar la cita.");
+  return creada;
+}
+
+/** Crea una reserva pública solo si no existe otra cita que ocupe ese horario. */
+export async function reservarCita(abogadoId: number, c: NuevaCita): Promise<{ id: number; cruces: number } | null> {
+  return guardarCita(abogadoId, c, false);
 }
 
 export async function obtenerCita(abogadoId: number, id: number): Promise<Cita | null> {
