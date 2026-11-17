@@ -34,6 +34,7 @@ const nextConfig = {
   serverExternalPackages: ["pdfkit", "pg", "snowball-stemmers"],
   outputFileTracingIncludes: { "/**/*": ["db/**/*", "biblioteca/**/*", "public/logo-neife-chico.png"] },
   experimental: {
+    agentUpgrade: "security",
     // Documentos PDF que el abogado sube a una ficha (máx. 4 MB)
     serverActions: { bodySizeLimit: "5mb" },
   },
