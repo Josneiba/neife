@@ -12,6 +12,8 @@ export function PieSitio() {
         </div>
         <nav className="pie-enlaces" aria-label="Información">
           <Link href="/asesoria/solicitar">Contar mi caso</Link>
+          <Link href="/seguir">Seguir mi caso</Link>
+          <Link href="/calculadoras">Calculadoras</Link>
           <Link href="/privacidad">Privacidad</Link>
           <Link href="/terminos">Términos</Link>
           <Link href="/cookies">Cookies</Link>

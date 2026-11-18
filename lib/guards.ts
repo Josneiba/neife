@@ -39,7 +39,20 @@ export function rutaSegura(destino: string | null | undefined, porDefecto = "/")
 
 export async function ipActual(): Promise<string> {
   const h = await headers();
+  if (process.env.VERCEL) {
+    const vercel = h.get("x-vercel-forwarded-for") ?? h.get("x-real-ip") ?? h.get("x-forwarded-for");
+    const ip = vercel?.split(",").map((x) => x.trim()).find(Boolean);
+    if (ip) return ip;
+  }
+  const configurado = process.env.PROXY_HOPS;
+  const saltos = configurado ? Number(configurado) : 1;
+  if (!Number.isSafeInteger(saltos) || saltos < 1) {
+    throw new Error("PROXY_HOPS debe ser un entero positivo.");
+  }
   const xff = h.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
+  if (xff) {
+    const lista = xff.split(",").map((x) => x.trim()).filter(Boolean);
+    if (lista.length) return lista[Math.max(0, lista.length - saltos)];
+  }
   return h.get("x-real-ip") ?? "local";
 }

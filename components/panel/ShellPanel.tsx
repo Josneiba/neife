@@ -23,9 +23,11 @@ const NAV: { href: string; texto: string; icono: NombreIconoCrm; incluye: string
 
 function tituloDe(p: string) {
   if (p.startsWith("/panel/biblioteca")) return "Biblioteca legal";
-  if (p.startsWith("/panel/informes")) return "Informes de caso";
+  if (p.startsWith("/panel/informes")) return "Informes a clientes";
+  if (p.startsWith("/panel/enlace")) return "Mi enlace y QR";
+  if (p.startsWith("/panel/bandeja")) return "Bandeja de solicitudes";
   if (p.startsWith("/panel/perfil")) return "Mi perfil";
-  return "Casos";
+  return "Solicitudes asignadas";
 }
 
 function enRuta(pathname: string, base: string) {
@@ -74,29 +76,49 @@ export function ShellPanel({
 
   const menu = useMemo(() => ({ abrir: () => setAbierto(true), avisos }), [avisos]);
 
-  /* Igual que el menú de la referencia: una lista de accesos, una línea, y luego las ayudas. */
-  const principales: Item[] = [
-    { href: "/panel/bandeja", texto: "Bandeja de solicitudes", icono: "lista", n: bandeja },
-    { href: "/panel", texto: "Mis casos", icono: "maletin", n: casosNuevos },
-    { href: "/panel/crm/notificaciones", texto: "Notificaciones", icono: "campana", n: avisos },
-    { href: "/panel/crm/informes?t=derivaciones", texto: "Colegas y derivaciones", icono: "intercambio" },
-    { href: "/panel/crm/planificacion?t=indicadores", texto: "Indicadores clave", icono: "informe" },
-    { href: "/panel/crm/gestion/referidos", texto: "Referidos", icono: "usuarios" },
-    { href: "/panel/crm/gestion/nuevos_mandantes", texto: "Mandatos firmados", icono: "firma" },
-    { href: "/panel/crm/tareas", texto: "Tareas", icono: "tarea" },
-    { href: "/panel/crm/gestion/sin_seguimiento", texto: "Sin seguimiento", icono: "alerta" },
-    { href: "/panel/crm/notas", texto: "Notas rápidas", icono: "nota" },
-    { href: "/panel/crm/gestion/por_contactar", texto: "Por contactar", icono: "usuario-mas" },
-    { href: "/panel/crm/plantillas", texto: "Plantillas de mensajes", icono: "mensaje" },
+  /* Accesos agrupados por lo que el asesor quiere hacer: captar, atender, ver resultados, aprender. */
+  const grupos: { titulo: string; items: Item[] }[] = [
+    {
+      titulo: "Captar clientes",
+      items: [
+        { href: "/panel/bandeja", texto: "Bandeja de solicitudes", icono: "lista", n: bandeja },
+        { href: "/panel/enlace", texto: "Mi enlace y QR", icono: "externo" },
+        { href: "/panel/crm/gestion/referidos", texto: "Referidos", icono: "usuarios" },
+        { href: "/panel/crm/gestion/por_contactar", texto: "Por contactar", icono: "usuario-mas" },
+        { href: "/panel/crm/consejos", texto: "Cómo te ven y consejos", icono: "bombilla" },
+      ],
+    },
+    {
+      titulo: "Atender",
+      items: [
+        { href: "/panel", texto: "Solicitudes asignadas", icono: "maletin", n: casosNuevos },
+        { href: "/panel/crm/notificaciones", texto: "Notificaciones", icono: "campana", n: avisos },
+        { href: "/panel/crm/tareas", texto: "Tareas", icono: "tarea" },
+        { href: "/panel/crm/gestion/sin_seguimiento", texto: "Sin seguimiento", icono: "alerta" },
+        { href: "/panel/crm/notas", texto: "Notas rápidas", icono: "nota" },
+        { href: "/panel/crm/plantillas", texto: "Plantillas de mensajes", icono: "mensaje" },
+      ],
+    },
+    {
+      titulo: "Resultados",
+      items: [
+        { href: "/panel/crm/planificacion?t=indicadores", texto: "Indicadores clave", icono: "informe" },
+        { href: "/panel/crm/gestion/nuevos_mandantes", texto: "Mandatos firmados", icono: "firma" },
+        { href: "/panel/crm/informes?t=derivaciones", texto: "Colegas y derivaciones", icono: "intercambio" },
+        { href: "/panel/informes", texto: "Informes a clientes", icono: "documento" },
+      ],
+    },
+    {
+      titulo: "Aprender",
+      items: [
+        { href: "/panel/biblioteca", texto: "Biblioteca legal", icono: "libro" },
+        { href: "/panel/crm/guia", texto: "Guía de primera asesoría", icono: "birrete" },
+        { href: "/panel/crm/zonas?abrir=notas", texto: "Notas de zona (en el mapa)", icono: "libro" },
+        { href: "/calculadoras", texto: "Calculadoras de plazos y finiquito", icono: "externo" },
+      ],
+    },
   ];
-  const ayudas: Item[] = [
-    { href: "/panel/crm/zonas?abrir=notas", texto: "Notas de zona", icono: "libro" },
-    { href: "/panel/biblioteca", texto: "Biblioteca legal", icono: "libro" },
-    { href: "/panel/informes", texto: "Informes de caso", icono: "documento" },
-    { href: "/panel/crm/guia", texto: "Guía de primera asesoría", icono: "birrete" },
-    { href: "/panel/crm/consejos", texto: "Ideas para conseguir clientes", icono: "bombilla" },
-    { href: "/panel/perfil", texto: "Mi perfil", icono: "cliente" },
-  ];
+  const cuenta: Item[] = [{ href: "/panel/perfil", texto: "Mi perfil", icono: "cliente" }];
   const esActivo = (href: string) => {
     const [ruta, q] = href.split("?");
     return !q && (ruta === "/panel" ? pathname === "/panel" : enRuta(pathname, ruta));
@@ -119,17 +141,20 @@ export function ShellPanel({
             </button>
           </div>
           <nav className="ps-menu-nav">
-            <section>
-              {principales.map((i) => (
-                <Link key={i.href} href={i.href} aria-current={esActivo(i.href) ? "page" : undefined}>
-                  <IconoCrm nombre={i.icono} tam={22} />
-                  <span>{i.texto}</span>
-                  {i.n ? <span className="ps-contador en-lista">{i.n}</span> : null}
-                </Link>
-              ))}
-            </section>
-            <section>
-              {ayudas.map((i) => (
+            {grupos.map((g) => (
+              <section key={g.titulo} aria-label={g.titulo}>
+                <h2 className="ps-grupo">{g.titulo}</h2>
+                {g.items.map((i) => (
+                  <Link key={i.href} href={i.href} aria-current={esActivo(i.href) ? "page" : undefined}>
+                    <IconoCrm nombre={i.icono} tam={22} />
+                    <span>{i.texto}</span>
+                    {i.n ? <span className="ps-contador en-lista">{i.n}</span> : null}
+                  </Link>
+                ))}
+              </section>
+            ))}
+            <section aria-label="Cuenta">
+              {cuenta.map((i) => (
                 <Link key={i.href} href={i.href} aria-current={esActivo(i.href) ? "page" : undefined}>
                   <IconoCrm nombre={i.icono} tam={22} />
                   <span>{i.texto}</span>

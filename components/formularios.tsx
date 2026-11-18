@@ -1,6 +1,9 @@
 "use client";
 
+import { Consentimiento } from "@/components/Consentimiento";
+
 import { startTransition, useActionState, useEffect, useRef, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { BotonEnviar } from "./BotonEnviar";
 import { ingresar, registrarAbogado, registrarCliente } from "@/lib/acciones/auth";
 import { crearSolicitud } from "@/lib/acciones/solicitudes";
@@ -9,8 +12,14 @@ import { pedirRecuperacion, restablecerClave } from "@/lib/acciones/recuperar";
 import { importarLeyChile } from "@/lib/acciones/admin";
 import { solicitarCodigoIngreso, validarCodigoIngreso, verificarCorreo } from "@/lib/acciones/acceso-email";
 import type { EstadoForm } from "@/lib/validators";
+
+const SelectorUbicacion = dynamic(() => import("./crm/SelectorUbicacion").then((m) => m.SelectorUbicacion), {
+  ssr: false,
+  loading: () => <p className="ayuda">Cargando el mapa…</p>,
+});
 import { MATERIAS, PRESUPUESTOS, REGIONES, URGENCIAS } from "@/lib/materias";
 import Link from "next/link";
+import { CONDICIONES, esAbogado } from "@/lib/verificacion-titulo";
 
 const VACIO: EstadoForm = {};
 
@@ -363,7 +372,9 @@ export function FormRegistroCliente() {
 
 export function FormRegistroAbogado() {
   const { estado, onSubmit, pendiente } = useAccionForm(registrarAbogado);
+  const [condicion, setCondicion] = useState<string>(estado.valores?.titulo ?? "");
   const errorDeclaracion = estado.errores?.declaracion;
+  const abogado = esAbogado(condicion);
   return (
     <Asistente
       estado={estado}
@@ -371,39 +382,71 @@ export function FormRegistroAbogado() {
       pendiente={pendiente}
       textoFinal="Crear cuenta de asesor"
       enviando="Enviando…"
-      extra={
-        <div className="aviso">
-          Revisamos cada cuenta de asesor antes de activarla. Mientras tanto puedes ingresar, pero tu perfil no será público.
-        </div>
-      }
       pasos={[
         {
           titulo: "Tus datos",
-          campos: ["nombre", "email"],
+          campos: ["nombre", "email", "clave"],
           contenido: (
             <>
+              <div className="aviso">
+                Revisamos a mano cada cuenta de asesor, normalmente en 1 o 2 días hábiles. En el siguiente paso ten a mano el
+                código de tu certificado de título (si eres abogado/a) o tu universidad y año.
+              </div>
               <Texto id="nombre" label="Nombre completo" estado={estado} autoComplete="name" />
-              <Texto id="email" label="Correo" tipo="email" estado={estado} autoComplete="email" />
+              <div className="fila-dos">
+                <Texto id="email" label="Correo" tipo="email" estado={estado} autoComplete="email" />
+                <Texto id="clave" label="Contraseña" tipo="password" estado={estado} autoComplete="new-password" ayuda="Mínimo 10 caracteres." />
+              </div>
             </>
           ),
         },
         {
-          titulo: "Tu contraseña",
-          campos: ["clave"],
-          contenido: <Texto id="clave" label="Contraseña" tipo="password" estado={estado} autoComplete="new-password" ayuda="Mínimo 10 caracteres." />,
-        },
-        {
-          titulo: "Tu perfil profesional",
+          titulo: "Tu condición profesional",
           campos: ["titulo", "registro", "declaracion"],
           contenido: (
             <>
-              <Texto id="titulo" label="Tu condición profesional" estado={estado} ayuda="Lo que eres hoy, sin adornos. Ej.: Abogada, o Estudiante de Derecho." />
-              <Texto id="registro" label="Número de colegiatura o universidad" estado={estado} ayuda="Solo para verificar tu cuenta. No se muestra en tu perfil público." />
+              <Campo id="titulo" label="¿Qué eres hoy?" error={estado.errores?.titulo}>
+                <select
+                  id="titulo"
+                  name="titulo"
+                  className="entrada"
+                  value={condicion}
+                  onChange={(ev) => setCondicion(ev.target.value)}
+                  required
+                  {...descripcion("titulo", undefined, estado.errores?.titulo)}
+                >
+                  <option value="">Elige una opción</option>
+                  {CONDICIONES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              {condicion ? (
+                <Texto
+                  id="registro"
+                  label={abogado ? "Código del certificado de título" : "Universidad y año"}
+                  estado={estado}
+                  ayuda={
+                    abogado
+                      ? "Lo trae tu certificado de título del Poder Judicial. Lo revisamos allí y puedes mostrarlo en tu perfil para que otros lo comprueben."
+                      : "Solo lo vemos nosotros, para verificar tu cuenta."
+                  }
+                />
+              ) : null}
               <div className="campo">
-                <label className="opcion">
-                  <input type="checkbox" name="declaracion" aria-invalid={errorDeclaracion ? true : undefined} />
-                  <span>Declaro que estos datos son verdaderos y que presto orientación general, no representación legal.</span>
-                </label>
+                <Consentimiento
+                  nombre="declaracion"
+                  invalido={Boolean(errorDeclaracion)}
+                  corto="Declaro que mis datos son verdaderos y que oriento, no represento."
+                  detalle={
+                    <p>
+                      Declaro que estos datos son verdaderos y que presto orientación general, no representación legal.
+                      {abogado ? " Autorizo mostrar el código de mi certificado en mi perfil público una vez verificado." : ""}
+                    </p>
+                  }
+                />
                 {errorDeclaracion ? <p className="error-campo" role="alert">{errorDeclaracion}</p> : null}
               </div>
             </>
@@ -422,11 +465,16 @@ export function FormSolicitud({
   nombre,
   email,
   fijo,
+  via,
+  fechaInicial,
 }: {
   asesores: { id: number; nombre: string }[];
   asesorInicial?: number;
   nombre?: string;
   email?: string;
+  /** "enlace" cuando la persona llegó por el enlace o QR de un asesor. */
+  via?: string;
+  fechaInicial?: string;
   /** Datos del caso ya ingresados en el paso anterior. */
   fijo?: { materia: string; region: string; relato: string };
 }) {
@@ -528,6 +576,7 @@ export function FormSolicitud({
         {e.urgencia ? <p className="error-campo">{e.urgencia}</p> : null}
       </fieldset>
 
+      <div className="fila-dos">
       <Campo id="presupuesto" label="Presupuesto (opcional)" error={e.presupuesto} ayuda="Solo de referencia. Puedes dejarlo en blanco.">
         <select id="presupuesto" name="presupuesto" className="entrada" defaultValue={v.presupuesto ?? ""} {...descripcion("presupuesto", "x", e.presupuesto)}>
           <option value="">Prefiero no indicarlo</option>
@@ -538,6 +587,24 @@ export function FormSolicitud({
           ))}
         </select>
       </Campo>
+      <Texto
+        id="contraparte"
+        label="¿Contra quién o con quién? (opcional)"
+        estado={estado}
+        requerido={false}
+        ayuda="Nombre de la otra parte. Sirve para que el asesor detecte conflictos de interés."
+      />
+      </div>
+      <Texto
+        id="fecha_hecho"
+        label="¿Cuándo ocurrió? (opcional)"
+        tipo="date"
+        estado={estado}
+        requerido={false}
+        valor={fechaInicial}
+        ayuda="Con la fecha, tu asesor ve cuánto plazo queda para reclamar."
+      />
+      {via === "enlace" ? <input type="hidden" name="via" value="enlace" /> : null}
 
       <div className="fila-dos">
         <Texto id="nombre" label="Tu nombre" estado={estado} autoComplete="name" valor={nombre} />
@@ -560,34 +627,46 @@ export function FormSolicitud({
         </label>
       </div>
 
-      <div className="campo" style={{ display: "grid", gap: 10 }}>
-        <label className="opcion">
-          <input type="checkbox" name="consentimiento" defaultChecked={v.consentimiento === "on"} aria-invalid={e.consentimiento ? true : undefined} />
-          <span>
-            Acepto los Términos y condiciones y la Política de privacidad, y autorizo el tratamiento de mis datos para
-            gestionar esta solicitud. La autorización para compartir mi informe y conservar mis datos se solicita por separado.
-          </span>
-        </label>
-        <p className="ayuda">
-          Lee los <Link href="/terminos">Términos y condiciones</Link> y la <Link href="/privacidad">Política de privacidad</Link>.
-        </p>
+      <div className="campo consent-grupo">
+        <Consentimiento
+          nombre="consentimiento"
+          marcado={v.consentimiento === "on"}
+          invalido={Boolean(e.consentimiento)}
+          corto="Acepto los Términos y la Política de privacidad para gestionar mi solicitud."
+          detalle={
+            <>
+              <p>
+                Acepto los Términos y condiciones y la Política de privacidad, y autorizo el tratamiento de mis datos para
+                gestionar esta solicitud. La autorización para compartir mi informe y conservar mis datos se solicita por separado.
+              </p>
+              <p>
+                Lee los <Link href="/terminos">Términos y condiciones</Link> y la <Link href="/privacidad">Política de privacidad</Link>.
+              </p>
+            </>
+          }
+        />
         {e.consentimiento ? (
           <p className="error-campo" role="alert">
             {e.consentimiento}
           </p>
         ) : null}
-        <label className="opcion">
-          <input type="checkbox" name="derivar" defaultChecked={v.derivar === "on"} />
-          <span>Si corresponde, autorizo que mi informe se comparta con un abogado del rubro.</span>
-        </label>
-        <label className="opcion">
-          <input type="checkbox" name="conservar" defaultChecked={v.conservar === "on"} />
-          <span>
-            Quiero que guarden mis datos después de la asesoría, para ayudarme de nuevo. Si no lo marcas, se anonimizarán
-            después de 15 días desde el cierre, rechazo o derivación confirmada. Puedes cambiar esta decisión o pedir el
-            borrado desde tu enlace de seguimiento.
-          </span>
-        </label>
+        <Consentimiento
+          nombre="derivar"
+          marcado={v.derivar === "on"}
+          corto="Si corresponde, compartir mi informe con un abogado del rubro (opcional)."
+          detalle={<p>Solo se comparte el informe de tu caso con un abogado de la materia, para que pueda ayudarte. Puedes retirar esta autorización cuando quieras.</p>}
+        />
+        <Consentimiento
+          nombre="conservar"
+          marcado={v.conservar === "on"}
+          corto="Guardar mis datos para ayudarme de nuevo (opcional)."
+          detalle={
+            <p>
+              Si no lo marcas, tus datos se anonimizarán 15 días después del cierre, rechazo o derivación confirmada. Puedes
+              cambiar esta decisión o pedir el borrado desde tu enlace de seguimiento.
+            </p>
+          }
+        />
       </div>
 
       <div className="botones">
@@ -607,12 +686,17 @@ export function FormPerfil({
     titulo: string;
     registro: string;
     ubicacion: string;
+    direccion?: string;
+    lat?: number | null;
+    lng?: number | null;
+    honorarios?: string;
     bio: string;
     precioInforme: number;
     metaSemanal?: number;
     instruccionesPago: string;
     materias: string[];
     publicado: boolean;
+    verificadoEn?: string;
   };
 }) {
   const { estado, onSubmit, pendiente } = useAccionForm(guardarPerfil);
@@ -624,10 +708,30 @@ export function FormPerfil({
       <Mensajes estado={estado} />
       <div className="fila-dos">
         <Texto id="nombre" label="Nombre público" estado={estado} valor={inicial.nombre} />
-        <Texto id="titulo" label="Condición profesional" estado={estado} valor={inicial.titulo} ayuda="Escribe lo que eres hoy, por ejemplo: Abogado, o Estudiante de Derecho." />
+        {inicial.verificadoEn ? (
+          <div className="campo">
+            <span className="campo-titulo">Condición profesional</span>
+            <p className="pf-verificado">
+              <strong>{inicial.titulo}</strong> · verificada el {inicial.verificadoEn.slice(8, 10)}-{inicial.verificadoEn.slice(5, 7)}-{inicial.verificadoEn.slice(0, 4)}
+            </p>
+            <input type="hidden" name="titulo" value={inicial.titulo} />
+            <input type="hidden" name="registro" value={inicial.registro} />
+            <p className="ayuda">Para cambiarla, escríbenos: hay que volver a verificarla.</p>
+          </div>
+        ) : (
+          <Texto id="titulo" label="Condición profesional" estado={estado} valor={inicial.titulo} ayuda="Por ejemplo: Abogado/a o Estudiante de Derecho." />
+        )}
       </div>
-      <Texto id="registro" label="Número de colegiatura o universidad" estado={estado} valor={inicial.registro} ayuda="Solo lo ve el equipo de Neife para verificarte." />
+      {inicial.verificadoEn ? null : (
+        <Texto id="registro" label="Código de certificado o universidad" estado={estado} valor={inicial.registro} ayuda="Solo lo ve el equipo de Neife para verificarte." />
+      )}
       <Texto id="ubicacion" label="Dónde atiendes" estado={estado} requerido={false} valor={inicial.ubicacion} ayuda="Por ejemplo: Región Metropolitana, atención online." />
+
+      <fieldset className="campo">
+        <legend className="campo-titulo">Dirección de tu oficina (opcional)</legend>
+        <p className="ayuda">Escribe la dirección y busca el punto en el mapa. Se muestra en tu ficha para quien quiera ir en persona.</p>
+        <SelectorUbicacion lat={inicial.lat} lng={inicial.lng} direccion={inicial.direccion} conDireccion />
+      </fieldset>
 
       <fieldset className="campo">
         <legend className="campo-titulo">Materias que orientas</legend>
@@ -656,6 +760,19 @@ export function FormPerfil({
           defaultValue={v.precio_informe ?? inicial.precioInforme}
           required
           {...descripcion("precio_informe", "x", e.precio_informe)}
+        />
+      </Campo>
+
+      <Campo id="honorarios" label="Honorarios por servicio (opcional)" error={e.honorarios} ayuda="Una línea por servicio, máximo 6. Ejemplo: Consulta de 30 minutos: $20.000. Quien te ve sabe qué esperar antes de escribirte.">
+        <textarea
+          id="honorarios"
+          name="honorarios"
+          className="entrada"
+          style={{ minHeight: 90 }}
+          defaultValue={v.honorarios ?? inicial.honorarios ?? ""}
+          maxLength={500}
+          placeholder={"Consulta de 30 minutos: $20.000\nRevisión de contrato: desde $60.000"}
+          {...descripcion("honorarios", "x", e.honorarios)}
         />
       </Campo>
 

@@ -5,11 +5,14 @@ import { FormPerfil } from "@/components/formularios";
 import { DropdownMulti } from "@/components/panel/DropdownMulti";
 import { requerirAbogado } from "@/lib/guards";
 import { obtenerPerfil } from "@/lib/datos";
-import { leerAlertas } from "@/lib/alertas";
+import { hayFiltros, leerAlertas } from "@/lib/alertas";
 import { DURACIONES, leerHorario } from "@/lib/agenda-publica";
 import { resumenResenas, textoTiempo, tiempoRespuestaHoras } from "@/lib/resenas";
 import { guardarMiHorario, guardarMisAvisos } from "@/lib/acciones/avisos";
 import { MATERIAS, PRESUPUESTOS, REGIONES } from "@/lib/materias";
+import { resumenCuenta } from "@/lib/pagos-datos";
+import { BANCOS, TIPOS_CUENTA } from "@/lib/pagos";
+import { borrarCuentaDeposito, guardarCuentaDeposito } from "@/lib/acciones/pagos";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 export const dynamic = "force-dynamic";
@@ -26,17 +29,26 @@ export default async function MiPerfil({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const perfil = await obtenerPerfil(usuario.id);
   if (!perfil) notFound();
-  const [alertas, horario, resenas, horas] = await Promise.all([
+  const [alertas, horario, resenas, horas, cuenta] = await Promise.all([
     leerAlertas(usuario.id),
     leerHorario(usuario.id),
     resumenResenas(usuario.id),
     tiempoRespuestaHoras(usuario.id),
+    resumenCuenta(usuario.id),
   ]);
   const urgenciaMinima = alertas.urgencias.includes("pronto")
     ? "pronto"
     : alertas.urgencias.includes("urgente")
       ? "urgente"
       : "";
+
+  const pasos = [
+    { texto: "Cuenta verificada", hecho: perfil.verificadoEn !== "", ancla: "#t-datos" },
+    { texto: "Presentación escrita", hecho: perfil.bio.trim().length >= 40, ancla: "#t-datos" },
+    { texto: "Horas para reservar", hecho: horario.activo, ancla: "#t-horario" },
+    { texto: "Avisos elegidos", hecho: hayFiltros(alertas), ancla: "#t-avisos" },
+  ];
+  const listos = pasos.filter((p) => p.hecho).length;
 
   return (
     <>
@@ -46,6 +58,21 @@ export default async function MiPerfil({ searchParams }: { searchParams: Promise
           <span className="p-sub">Lo que ven las personas en <Link href="/asesoria">Asesoría</Link></span>
         </div>
       </header>
+
+      {listos < pasos.length ? (
+        <nav className="pf-pasos" aria-label="Primeros pasos">
+          <strong>Primeros pasos · {listos} de {pasos.length}</strong>
+          <ul>
+            {pasos.map((p) => (
+              <li key={p.texto} data-hecho={p.hecho ? "1" : "0"}>
+                <a href={p.ancla}>
+                  <span aria-hidden="true">{p.hecho ? "✓" : "○"}</span> {p.texto}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
 
       {resenas.total || horas !== null ? (
         <div className="pf-kpis">
@@ -69,12 +96,17 @@ export default async function MiPerfil({ searchParams }: { searchParams: Promise
               titulo: perfil.titulo,
               registro: perfil.registro,
               ubicacion: perfil.ubicacion,
+              direccion: perfil.direccion,
+              lat: perfil.lat,
+              lng: perfil.lng,
+              honorarios: perfil.honorarios.join("\n"),
               bio: perfil.bio,
               precioInforme: perfil.precioInforme,
               metaSemanal: perfil.metaSemanal,
               instruccionesPago: perfil.instruccionesPago,
               materias: perfil.materias,
               publicado: perfil.publicado,
+              verificadoEn: perfil.verificadoEn,
             }}
           />
         </section>
@@ -158,6 +190,67 @@ export default async function MiPerfil({ searchParams }: { searchParams: Promise
                 <button type="submit" className="btn btn-chico">Guardar horario</button>
               </div>
             </form>
+          </section>
+
+          <section className="pf-tarjeta" id="t-pagos" aria-labelledby="t-pagos-h">
+            <h2 id="t-pagos-h">Datos para recibir pagos</h2>
+            <p className="pf-ayuda">
+              Tus clientes te pagan por transferencia, directo a tu cuenta. Los datos se guardan cifrados y solo los ve la persona
+              a la que le envías un cobro. <strong>No pedimos ni guardamos números de tarjeta.</strong>
+            </p>
+            {sp.cuenta === "ok" ? <p className="aviso aviso-ok" role="status">Guardamos tus datos de depósito.</p> : null}
+            {sp.cuenta === "borrada" ? <p className="aviso aviso-ok" role="status">Borramos tus datos de depósito.</p> : null}
+            {sp.cuenta === "banco" ? <p className="aviso aviso-error" role="alert">Elige el banco y el tipo de cuenta.</p> : null}
+            {sp.cuenta === "numero" ? <p className="aviso aviso-error" role="alert">El número de cuenta debe tener solo dígitos (entre 6 y 20).</p> : null}
+            {sp.cuenta === "rut" ? <p className="aviso aviso-error" role="alert">Revisa el RUT: el dígito verificador no calza.</p> : null}
+            {sp.cuenta === "titular" ? <p className="aviso aviso-error" role="alert">Escribe el nombre del titular.</p> : null}
+            {sp.cuenta === "correo" ? <p className="aviso aviso-error" role="alert">El correo para comprobantes no es válido.</p> : null}
+            {sp.cuenta === "limite" ? <p className="aviso aviso-error" role="alert">Muchos intentos seguidos. Prueba más tarde.</p> : null}
+            {cuenta ? (
+              <p className="pf-cuenta-actual">
+                <strong>{cuenta.banco}</strong> · {cuenta.tipo} · terminada en <b>{cuenta.ultimos}</b> · {cuenta.titular}
+              </p>
+            ) : null}
+            <form action={guardarCuentaDeposito} className="pf-form" autoComplete="off">
+              <label className="pf-campo">
+                <span>Banco</span>
+                <select name="banco" required defaultValue={cuenta?.banco ?? ""}>
+                  <option value="" disabled>Elige un banco</option>
+                  {BANCOS.map((b) => <option key={b}>{b}</option>)}
+                </select>
+              </label>
+              <label className="pf-campo">
+                <span>Tipo de cuenta</span>
+                <select name="tipo" required defaultValue={cuenta?.tipo ?? ""}>
+                  <option value="" disabled>Elige el tipo</option>
+                  {TIPOS_CUENTA.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+                </select>
+              </label>
+              <label className="pf-campo">
+                <span>Número de cuenta{cuenta ? " (completo, para cambiarlo)" : ""}</span>
+                <input name="numero" inputMode="numeric" required maxLength={30} placeholder={cuenta ? `•••• ${cuenta.ultimos}` : "Solo dígitos"} />
+              </label>
+              <label className="pf-campo">
+                <span>RUT del titular</span>
+                <input name="rut" required maxLength={14} defaultValue={cuenta?.rut ?? ""} placeholder="12.345.678-5" />
+              </label>
+              <label className="pf-campo pf-ancho">
+                <span>Nombre del titular</span>
+                <input name="titular" required maxLength={80} defaultValue={cuenta?.titular ?? ""} />
+              </label>
+              <label className="pf-campo pf-ancho">
+                <span>Correo para comprobantes (opcional)</span>
+                <input name="correo" type="email" maxLength={120} defaultValue={cuenta?.correo ?? ""} />
+              </label>
+              <div className="pf-acciones">
+                <button type="submit" className="btn btn-chico">{cuenta ? "Actualizar datos" : "Guardar datos"}</button>
+              </div>
+            </form>
+            {cuenta ? (
+              <form action={borrarCuentaDeposito} className="pf-borrar-cuenta">
+                <button type="submit" className="btn btn-secundario btn-chico">Borrar mis datos de depósito</button>
+              </form>
+            ) : null}
           </section>
         </div>
       </div>

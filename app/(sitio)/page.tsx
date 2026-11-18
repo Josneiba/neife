@@ -21,7 +21,7 @@ export default function Inicio() {
               Soy abogado o asesor
             </Link>
           </div>
-          <p className="ayuda" style={{ marginTop: 14 }}>Sin cuenta. Orientación general, no reemplaza a un abogado.</p>
+          <p className="ayuda" style={{ marginTop: 14 }}>Sin cuenta. Orientación general, no reemplaza a un abogado. ¿Ya enviaste tu caso? <Link href="/seguir">Seguir mi caso</Link>.</p>
         </div>
         <EstanteLateral lado="der" />
         <FilaLibros className="fila-libros-hero" semilla={11} />
@@ -110,7 +110,13 @@ export default function Inicio() {
             </a>
           ) : null}
           {SITIO.telefonoContacto ? <p>{SITIO.telefonoContacto}</p> : null}
-          {!SITIO.correoContacto && !SITIO.telefonoContacto ? <p>El canal de contacto estará disponible pronto.</p> : null}
+          {!SITIO.correoContacto && !SITIO.telefonoContacto ? (
+            <>
+              <Link href="/guia/laboral" className="btn btn-secundario">Ver guías gratuitas</Link>
+              <Link href="/seguir" className="btn btn-secundario">Seguir mi caso</Link>
+              <Link href="/asesoria/solicitar" className="btn btn-primario">Contar mi caso</Link>
+            </>
+          ) : null}
         </div>
       </section>
     </>

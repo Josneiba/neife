@@ -25,6 +25,8 @@ model Usuarios {
   identidades         Identidades[]
   documentos          Documentos[]  @relation("DocumentoAsesor")
   resenas             Resenas[]
+  cuenta_deposito     CuentasDeposito?
+  cobros              Cobros[]
 
   @@map("usuarios")
 }
@@ -43,6 +45,12 @@ model Perfiles {
   meta_semanal       Int      @default(3)
   alertas            String   @default("")
   horario            String   @default("")
+  verificado_en      String   @default("")
+  verificacion_nota  String   @default("")
+  direccion          String   @default("")
+  honorarios         String   @default("")
+  lat                Float?
+  lng                Float?
   usuario            Usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@map("perfiles")
@@ -51,10 +59,15 @@ model Perfiles {
 model Solicitudes {
   id                  Int           @id @default(autoincrement())
   codigo              String        @unique
-  codigo_seguimiento  String        @unique(map: "idx_solicitudes_codigo_seguimiento") @default(dbgenerated("('CASO-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)) || '-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)) || '-'::text || upper(substr(encode(gen_random_bytes(6), 'hex'::text), 1, 4)))"))
+  codigo_seguimiento  String        @unique(map: "idx_solicitudes_codigo_seguimiento") @default(dbgenerated("neife_codigo_corto()"))
   asesor_id           Int?
   tomada_en           String        @default("")
   ultimo_aviso        String        @default("")
+  contraparte_enc     String        @default("")
+  email_hash          String        @default("")
+  fecha_hecho         String        @default("")
+  mandato_propuesto   String        @default("")
+  mandato_en          String        @default("")
   cliente_id          Int?
   materia             String
   region              String        @default("")
@@ -84,6 +97,8 @@ model Solicitudes {
   seguimiento         Seguimiento[]
   documentos          Documentos[]
   resena              Resenas?
+  cobros              Cobros[]
+  mensajes            Mensajes[]
 
   @@index([asesor_id, estado], map: "idx_solicitudes_asesor")
   @@index([cliente_id], map: "idx_solicitudes_cliente")
@@ -246,4 +261,51 @@ model Resenas {
 
   @@index([asesor_id], map: "idx_resenas_asesor")
   @@map("resenas")
+}
+
+model CuentasDeposito {
+  usuario_id     Int      @id
+  banco          String
+  tipo           String
+  numero_enc     String
+  rut_enc        String
+  titular_enc    String
+  correo_enc     String   @default("")
+  actualizado_en String   @default(dbgenerated("ahora()"))
+  usuario        Usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@map("cuentas_deposito")
+}
+
+model Cobros {
+  id                  Int         @id @default(autoincrement())
+  solicitud_id        Int
+  asesor_id           Int
+  concepto            String
+  monto               Int
+  estado              String      @default("pendiente")
+  operacion_enc       String      @default("")
+  fecha_transferencia String      @default("")
+  creado_en           String      @default(dbgenerated("ahora()"))
+  aviso_en            String      @default("")
+  pagado_en           String      @default("")
+  solicitud           Solicitudes @relation(fields: [solicitud_id], references: [id], onDelete: Cascade)
+  asesor              Usuarios    @relation(fields: [asesor_id], references: [id], onDelete: Cascade)
+
+  @@index([solicitud_id], map: "idx_cobros_solicitud")
+  @@index([asesor_id, estado], map: "idx_cobros_asesor")
+  @@map("cobros")
+}
+
+model Mensajes {
+  id           Int         @id @default(autoincrement())
+  solicitud_id Int
+  de           String
+  texto_enc    String
+  creado_en    String      @default(dbgenerated("ahora()"))
+  leido_en     String      @default("")
+  solicitud    Solicitudes @relation(fields: [solicitud_id], references: [id], onDelete: Cascade)
+
+  @@index([solicitud_id, id], map: "idx_mensajes_solicitud")
+  @@map("mensajes")
 }

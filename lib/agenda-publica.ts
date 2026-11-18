@@ -1,3 +1,4 @@
+import { importarSolicitudes } from "./crm/servicio";
 import { getDb } from "./db";
 import { reservarCita } from "./crm/servicio-citas";
 import { esFecha, esHora, hoyLocal, horaAMin, minAHora, sumarDias } from "./crm/fechas";
@@ -85,7 +86,6 @@ export async function huecosLibres(asesorId: number, hoy = hoyLocal()): Promise<
 export async function reservarHora(p: {
   asesorId: number;
   solicitudId: number;
-  codigo: string;
   fecha: string;
   hora: string;
 }): Promise<{ fecha: string; horaIni: string } | null> {
@@ -95,18 +95,20 @@ export async function reservarHora(p: {
   if (!diasLibres.some((dia) => dia.fecha === p.fecha && dia.horas.includes(p.hora))) return null;
 
   const d = await getDb();
+  await importarSolicitudes(p.asesorId, p.solicitudId);
   const persona = await d.execute({
     sql: "SELECT id FROM crm_personas WHERE solicitud_id = ? AND abogado_id = ? ORDER BY id LIMIT 1",
     args: [p.solicitudId, p.asesorId],
   });
   const personaId = persona.rows[0] ? Number(persona.rows[0].id) : null;
+  if (!personaId) throw new Error("No se pudo vincular la solicitud con una persona del CRM.");
   const cita = await reservarCita(p.asesorId, {
     tipo: "asesoria",
     fecha: p.fecha,
     horaIni: p.hora,
     horaFin: minAHora(horaAMin(p.hora) + horario.duracion),
     personaId,
-    titulo: personaId ? "" : `Caso ${p.codigo}`,
+    titulo: "",
     nota: "Hora reservada por la persona desde su enlace de seguimiento.",
   });
   return cita ? { fecha: p.fecha, horaIni: p.hora } : null;

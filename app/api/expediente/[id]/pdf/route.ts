@@ -2,7 +2,7 @@ import { usuarioActual } from "@/lib/auth";
 import { auditar } from "@/lib/db";
 import { reunirExpediente } from "@/lib/expediente";
 import { generarExpedientePdf } from "@/lib/expediente-pdf";
-import { folio } from "@/lib/formato";
+import { } from "@/lib/formato";
 import { ipActual } from "@/lib/guards";
 import { permitir } from "@/lib/ratelimit";
 
@@ -29,7 +29,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const buf = await generarExpedientePdf(e, { paraPersona });
   await auditar(u.id, paraPersona ? "expediente_pdf_persona" : "expediente_pdf", "solicitud", id);
 
-  const nombre = `expediente-${folio(e.solicitud.codigo)}${paraPersona ? "-persona" : ""}.pdf`;
+  const nombre = `expediente-${e.solicitud.codigoSeguimiento}${paraPersona ? "-persona" : ""}.pdf`;
   const descargar = new URL(req.url).searchParams.get("descargar") === "1";
   return new Response(new Uint8Array(buf), {
     headers: {

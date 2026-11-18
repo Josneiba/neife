@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { getDb } from "@/lib/db";
 import "../../panel.css";
 import "../../crm.css";
 import "../../tema-panel.css";
@@ -15,6 +17,7 @@ import { listarPersonas } from "@/lib/crm/servicio";
 import { avisos } from "@/lib/crm/servicio-avisos";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 /**
  * Marco de todo el panel del abogado (v2): barra delgada con menú de tres rayas, barra inferior
@@ -27,6 +30,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   if (u.rol === "admin") redirect("/admin");
 
   if (u.estado !== "activo") {
+    const motivo =
+      u.estado === "rechazado"
+        ? String((await (await getDb()).execute({ sql: "SELECT verificacion_nota FROM perfiles WHERE usuario_id = ?", args: [u.id] })).rows[0]?.verificacion_nota ?? "")
+        : "";
     return (
       <main id="contenido" className="contenedor pagina-estrecha">
         <Logo />
@@ -38,8 +45,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </p>
         <p style={{ marginTop: 16 }}>
           {u.estado === "pendiente"
-            ? "Revisamos tu título y colegiatura. Cuando termine, verás los casos y tu perfil será público. Vuelve a ingresar más tarde."
-            : "No pudimos confirmar tus datos. Escríbenos si crees que es un error."}
+            ? "Revisamos tu título a mano, normalmente en 1 o 2 días hábiles. Te avisaremos por correo y, desde ese momento, verás los casos y tu perfil será público."
+            : motivo
+              ? `No pudimos confirmar tus datos: ${motivo}`
+              : "No pudimos confirmar tus datos. Escríbenos si crees que es un error."}
         </p>
         <div className="botones" style={{ marginTop: 28 }}>
           <Link href="/" className="btn btn-secundario">

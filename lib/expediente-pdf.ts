@@ -6,7 +6,7 @@ import { limpio } from "./informe-pdf";
 import { nombreEtapaCrm } from "./crm/catalogo";
 import { nombreEtapa } from "./etapas";
 import { nombreMateria, nombreUrgencia } from "./materias";
-import { folio } from "./formato";
+import { } from "./formato";
 
 /**
  * Expediente en PDF con formato de informe jurídico: carátula, secciones en números romanos,
@@ -37,7 +37,7 @@ export function generarExpedientePdf(e: Expediente, op: OpcionesExpediente): Pro
   const c = informe?.contenido;
   const avance = calcularAvance(e);
   const hoy = new Date();
-  const numFolio = folio(s.codigo);
+  const numFolio = s.codigoSeguimiento;
   const revision = avance.hitos.filter((h) => h.hecho).length;
   const final = Boolean(informe?.entregado);
 

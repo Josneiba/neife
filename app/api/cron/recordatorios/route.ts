@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { correos } from "@/lib/correo";
 import { urlSitio } from "@/lib/sitio";
+import { cronAutorizado } from "@/lib/cron";
+import { hoyLocal } from "@/lib/crm/fechas";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +13,11 @@ export const dynamic = "force-dynamic";
  * El correo solo trae cantidades, nunca nombres ni relatos.
  */
 export async function GET(req: NextRequest) {
-  const secreto = process.env.CRON_SECRET;
-  if (!secreto || req.headers.get("authorization") !== `Bearer ${secreto}`) {
+  if (!cronAutorizado(req)) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
   const d = await getDb();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
   const r = await d.execute({
     sql: `SELECT u.email,
                  SUM(CASE WHEN s.estado = 'nueva' THEN 1 ELSE 0 END) AS nuevas,

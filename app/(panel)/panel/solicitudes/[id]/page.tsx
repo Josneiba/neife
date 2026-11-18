@@ -17,7 +17,19 @@ import {
 } from "@/lib/datos";
 import { auditar } from "@/lib/db";
 import { estadoAbogado, faltantes, nombreEtapa, nombreResultado, RESULTADOS, siguientePaso } from "@/lib/etapas";
-import { fechaHora, folio } from "@/lib/formato";
+import { fechaHora } from "@/lib/formato";
+import { buscarConflictos } from "@/lib/conflictos";
+import { proponerMandato } from "@/lib/acciones/mandato";
+import { plazoDe } from "@/lib/plazos";
+import { cobrosDeSolicitud, tieneCuentaDeposito } from "@/lib/pagos-datos";
+import { listarMensajes, marcarLeidos } from "@/lib/mensajes-datos";
+import { HiloMensajes } from "@/components/HiloMensajes";
+import { enviarMensajeAsesor } from "@/lib/acciones/mensajes";
+import { hoyLocal } from "@/lib/crm/fechas";
+import { ETIQUETA_COBRO, ESTADOS_PARA_COBRAR } from "@/lib/pagos";
+import { pesos } from "@/lib/formato";
+import { anularCobro, crearCobro, marcarCobroPagado } from "@/lib/acciones/pagos";
+import { AlertaConflicto } from "@/components/panel/AlertaConflicto";
 import { MATERIAS, nombreMateria, nombreOrigen, nombreUrgencia } from "@/lib/materias";
 import {
   aceptarSolicitud,
@@ -38,7 +50,8 @@ import {
 export const metadata: Metadata = { title: "Caso" };
 export const dynamic = "force-dynamic";
 
-export default async function Ficha({ params }: { params: Promise<{ id: string }> }) {
+export default async function Ficha({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
   const u = await requerirAbogado();
   const { id: idTexto } = await params;
   const id = Number(idTexto);
@@ -46,13 +59,18 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
   const s = await obtenerSolicitudAsesor(id, u.id);
   if (!s) notFound();
   await auditar(u.id, "solicitud_vista", "solicitud", s.id);
+  const conflictos = s.contraparte ? await buscarConflictos(u.id, s.contraparte) : [];
 
-  const [informe, pendientes, historial, documentos] = await Promise.all([
+  const [informe, pendientes, historial, documentos, cobros, tieneCuenta] = await Promise.all([
     obtenerInformePorSolicitud(s.id),
     listarPendientes(s.id),
     listarSeguimiento(s.id),
     listarDocumentos(s.id, u.id),
+    cobrosDeSolicitud(s.id),
+    tieneCuentaDeposito(u.id),
   ]);
+  await marcarLeidos(s.id, "asesor");
+  const mensajes = await listarMensajes(s.id);
   const abiertos = pendientes.filter((p) => !p.hecho);
   const ctx = {
     estado: s.estado,
@@ -85,7 +103,7 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
       <header className="p-cab">
         <div className="p-cab-izq">
           <h1>
-            {folio(s.codigo)} · {s.nombre}
+            {s.codigoSeguimiento} · {s.nombre}
           </h1>
           <span className="p-sub">
             {nombreMateria(s.materia)}{s.region ? ` · ${s.region}` : ""}
@@ -299,6 +317,97 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
             </section>
           ) : null}
 
+          {["aceptada", "informe", "entregada"].includes(s.estado) ? (
+            <section className="p-sec" aria-labelledby="t-mandato">
+              <h2 id="t-mandato">Mandato</h2>
+              {sp.mandato === "ok" ? <p className="aviso aviso-ok" role="status">Enviamos la propuesta. Te avisamos cuando la acepten.</p> : null}
+              {sp.mandato === "texto" ? <p className="aviso aviso-error" role="alert">Escribe entre 20 y 800 caracteres: qué harás y a qué honorarios.</p> : null}
+              {s.mandatoEn ? (
+                <p className="aviso aviso-ok">La persona aceptó el mandato el {fechaHora(s.mandatoEn)}.</p>
+              ) : (
+                <form action={proponerMandato} className="p-mandato">
+                  <input type="hidden" name="id" value={s.id} />
+                  <label htmlFor="mandato-texto" className="solo-lectores">Propuesta de mandato</label>
+                  <textarea id="mandato-texto" name="texto" className="entrada" rows={4} maxLength={800} defaultValue={s.mandatoPropuesto} placeholder="Qué harás por la persona y a qué honorarios. Ej.: Representación en reclamo por despido ante la Inspección del Trabajo. Honorarios: $250.000 en 2 cuotas." />
+                  <button type="submit" className="btn btn-secundario btn-chico">{s.mandatoPropuesto ? "Actualizar y reenviar" : "Proponer mandato"}</button>
+                  <p className="ayuda">La persona lo acepta con un clic en su seguimiento y tu CRM lo pasa a «Mandato». Es un registro de aceptación, no reemplaza el contrato firmado.</p>
+                </form>
+              )}
+            </section>
+          ) : null}
+
+          <HiloMensajes
+            mensajes={mensajes}
+            yo="asesor"
+            otro="la persona"
+            accion={enviarMensajeAsesor}
+            ocultos={{ id: s.id }}
+            estado={typeof sp.msg === "string" ? sp.msg : undefined}
+            escrituraDisponible={["nueva", "aceptada", "informe", "entregada", "derivada"].includes(s.estado)}
+          />
+
+          {ESTADOS_PARA_COBRAR.includes(s.estado) ? (
+            <section className="p-sec" id="t-cobros" aria-labelledby="t-cobros-h">
+              <h2 id="t-cobros-h">Cobros</h2>
+              {sp.cobro === "ok" ? <p className="aviso aviso-ok" role="status">Creamos el cobro y le avisamos a la persona.</p> : null}
+              {sp.cobro === "pagado" ? <p className="aviso aviso-ok" role="status">Marcaste el cobro como pagado.</p> : null}
+              {sp.cobro === "anulado" ? <p className="aviso aviso-ok" role="status">Anulaste el cobro.</p> : null}
+              {sp.cobro === "concepto" ? <p className="aviso aviso-error" role="alert">Escribe un concepto (mínimo 3 letras).</p> : null}
+              {sp.cobro === "monto" ? <p className="aviso aviso-error" role="alert">El monto debe estar entre $1.000 y $50.000.000.</p> : null}
+              {sp.cobro === "muchos" ? <p className="aviso aviso-error" role="alert">Ya hay 5 cobros abiertos en este caso. Cierra alguno antes de crear otro.</p> : null}
+              {sp.cobro === "limite" ? <p className="aviso aviso-error" role="alert">Muchos intentos seguidos. Prueba más tarde.</p> : null}
+              {sp.cobro === "sincuenta" || !tieneCuenta ? (
+                <p className="aviso aviso-espera" role="status">
+                  Para cobrar, primero agrega tus datos de depósito en <Link href="/panel/perfil#t-pagos">tu perfil</Link>.
+                </p>
+              ) : null}
+              {cobros.length > 0 ? (
+                <ul className="p-cobros">
+                  {cobros.map((c) => (
+                    <li key={c.id} className="p-cobro" data-estado={c.estado}>
+                      <div className="p-cobro-top">
+                        <strong>{c.concepto}</strong>
+                        <span className="p-cobro-monto">{pesos(c.monto)}</span>
+                      </div>
+                      <div className="p-cobro-meta">
+                        <span className="p-cobro-estado">{ETIQUETA_COBRO[c.estado]}</span>
+                        {c.estado === "comprobante" ? <span>Operación {c.operacion} · {c.fechaTransferencia.split("-").reverse().join("-")}</span> : null}
+                        {c.estado === "pagado" ? <span>Confirmado el {fechaHora(c.pagadoEn)}</span> : null}
+                      </div>
+                      {c.estado === "pendiente" || c.estado === "comprobante" ? (
+                        <div className="p-cobro-acc">
+                          <form action={marcarCobroPagado}>
+                            <input type="hidden" name="cobro" value={c.id} />
+                            <button type="submit" className="btn btn-chico">Marcar como pagado</button>
+                          </form>
+                          <form action={anularCobro}>
+                            <input type="hidden" name="cobro" value={c.id} />
+                            <button type="submit" className="btn btn-secundario btn-chico">Anular</button>
+                          </form>
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {tieneCuenta ? (
+                <form action={crearCobro} className="p-cobro-nuevo">
+                  <input type="hidden" name="id" value={s.id} />
+                  <label className="pf-campo">
+                    <span>Concepto</span>
+                    <input name="concepto" required maxLength={120} placeholder="Ej.: Honorarios, primera cuota" />
+                  </label>
+                  <label className="pf-campo">
+                    <span>Monto (CLP)</span>
+                    <input name="monto" required inputMode="numeric" placeholder="125000" />
+                  </label>
+                  <button type="submit" className="btn btn-secundario btn-chico">Crear cobro</button>
+                  <p className="ayuda">La persona ve tus datos de depósito en su seguimiento, avisa cuando transfiere y tú lo confirmas aquí.</p>
+                </form>
+              ) : null}
+            </section>
+          ) : null}
+
           <section className="p-sec" aria-labelledby="t-hist">
             <h2 id="t-hist">Historial</h2>
             <form action={agregarNota} className="p-alta" style={{ marginBottom: 10 }}>
@@ -373,6 +482,21 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
               <dd>{nombreUrgencia(s.urgencia)}</dd>
               <dt>Presupuesto</dt>
               <dd>{s.presupuesto || "—"}</dd>
+              {s.contraparte ? (
+                <>
+                  <dt>Otra parte</dt>
+                  <dd>{s.contraparte}</dd>
+                </>
+              ) : null}
+              {(() => {
+                const pl = plazoDe(s.materia, s.fechaHecho, hoyLocal());
+                return pl ? (
+                  <>
+                    <dt>Plazo</dt>
+                    <dd className="plazo-chip" data-tono={pl.tono} title={pl.base}>{pl.texto} · {pl.titulo.toLowerCase()} hasta {pl.limite.split("-").reverse().join("-")}</dd>
+                  </>
+                ) : null;
+              })()}
               <dt>Derivar</dt>
               <dd>{s.derivarOk ? "Autorizado" : "Sin autorización"}</dd>
               <dt>Abogado</dt>
@@ -391,6 +515,7 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                 </>
               ) : null}
             </dl>
+            {s.contraparte ? <AlertaConflicto conflictos={conflictos} /> : null}
             {!cerrado ? (
               <form action={fijarContacto} className="p-alta" style={{ marginTop: 10 }}>
                 <input type="hidden" name="id" value={s.id} />

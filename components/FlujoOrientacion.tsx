@@ -13,6 +13,8 @@ type Props = {
   motivoSolicitud: string;
   asesorInicial?: number;
   materiaInicial?: string;
+  via?: string;
+  fechaInicial?: string;
   nombre?: string;
   email?: string;
 };

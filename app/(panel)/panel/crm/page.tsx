@@ -7,6 +7,9 @@ import { listarGrupos, resumenInicio } from "@/lib/crm/servicio";
 import { contadoresGestion } from "@/lib/crm/servicio-avisos";
 import { BarraApp, IconoBarra } from "@/components/panel/BarraApp";
 import { eliminarGrupoAccion, moverGrupoAccion } from "@/lib/acciones/crm";
+import { comoTeVen } from "@/lib/visibilidad";
+import { datosHoy } from "@/lib/hoy";
+import { PanelHoy } from "@/components/panel/PanelHoy";
 import { MetaHoy, MetaMes, TarjetaIndicador } from "@/components/crm/Indicadores";
 import { Baldosa, Seccion, Vacio } from "@/components/crm/Piezas";
 import { FilaPersona } from "@/components/crm/FilaPersona";
@@ -18,14 +21,35 @@ export const dynamic = "force-dynamic";
 
 export default async function InicioCrm() {
   const u = await requerirAbogado();
-  const [r, grupos, c] = await Promise.all([resumenInicio(u.id), listarGrupos(u.id), contadoresGestion(u.id)]);
+  const [r, grupos, c, v] = await Promise.all([resumenInicio(u.id), listarGrupos(u.id), contadoresGestion(u.id), comoTeVen(u.id)]);
+  const hoyDatos = await datosHoy(u.id, r.hoy);
   const { semana, mes, abiertos } = r;
+  const avance = (id?: string) => (
+<Seccion titulo="Clientes con avance" enlace={{ href: "/panel/crm/clientes", texto: "Ver todos" }} id={id}>
+      {r.avanzan.length === 0 ? (
+        <Vacio>
+          Todavía no hay clientes en asesoría. Usa el botón «+» para agregar a tu primer cliente, o{" "}
+          <Link href="/panel/crm/clientes">importa tus casos actuales</Link>.
+        </Vacio>
+      ) : (
+        <ul className="crm-lista">
+          {r.avanzan.map((p) => (
+            <FilaPersona key={p.id} p={p} hoy={r.hoy} />
+          ))}
+        </ul>
+      )}
+    </Seccion>
+  );
   const semanales = HOME_SEMANAL.filter((c) => c !== "consultas_nuevas");
 
   return (
     <>
       <BarraApp titulo="Inicio" acciones={<><IconoBarra href="/panel/crm/buscar" icono="buscar" etiqueta="Buscar" /><IconoBarra href="/panel/crm/notificaciones" icono="campana" etiqueta="Notificaciones" /></>} />
 
+      <div className="crm-inicio">
+      <PanelHoy hoy={r.hoy} d={hoyDatos} v={v}>
+        <div className="crm-solo-ancho">{avance()}</div>
+      </PanelHoy>
       <div className="crm-pagina">
         <Seccion titulo="Indicadores clave semanales" enlace={{ href: "/panel/crm/planificacion?t=indicadores", texto: "Ver todos" }} id="semanales">
           <p className="crm-periodo">{etiquetaPeriodo("semana", semana.inicio)}</p>
@@ -66,20 +90,7 @@ export default async function InicioCrm() {
           </div>
         </Seccion>
 
-        <Seccion titulo="Clientes con avance" enlace={{ href: "/panel/crm/clientes", texto: "Ver todos" }} id="avance">
-          {r.avanzan.length === 0 ? (
-            <Vacio>
-              Todavía no hay clientes en asesoría. Usa el botón «+» para agregar a tu primer cliente, o{" "}
-              <Link href="/panel/crm/clientes">importa tus casos actuales</Link>.
-            </Vacio>
-          ) : (
-            <ul className="crm-lista">
-              {r.avanzan.map((p) => (
-                <FilaPersona key={p.id} p={p} hoy={r.hoy} />
-              ))}
-            </ul>
-          )}
-        </Seccion>
+        <div className="crm-solo-bajo">{avance("avance")}</div>
 
         <Seccion titulo="Gestiones abiertas" id="abiertas">
           <div className="crm-baldosas">
@@ -91,7 +102,8 @@ export default async function InicioCrm() {
             <Baldosa href="/panel/crm/notas" icono="nota" texto="Notas rápidas" n={c.notas} />
             <Baldosa href="/panel/crm/gestion/por_contactar" icono="mensaje" texto="Por contactar" n={c.por_contactar} />
             <Baldosa href="/panel/crm/gestion/postventa" icono="escudo" texto="Postventa" n={c.postventa} />
-            <Baldosa href="/panel/crm/consejos" icono="bombilla" texto="Consejos" />
+            <Baldosa href="/panel/crm/consejos" icono="bombilla" texto="Cómo te ven" />
+            <Baldosa href="/panel/enlace" icono="externo" texto="Mi enlace y QR" />
           </div>
         </Seccion>
 
@@ -100,8 +112,9 @@ export default async function InicioCrm() {
             <Baldosa href="/panel/crm/zonas?abrir=notas" icono="zona" texto="Notas de zona" />
             <Baldosa href="/panel/biblioteca" icono="libro" texto="Biblioteca legal" />
             <Baldosa href="/panel/crm/plantillas" icono="mensaje" texto="Plantillas de mensajes" />
-            <Baldosa href="/panel/informes" icono="documento" texto="Informes de caso" />
-            <Baldosa href="/panel" icono="maletin" texto="Mis casos" />
+            <Baldosa href="/panel/informes" icono="documento" texto="Informes a clientes" />
+            <Baldosa href="/panel" icono="maletin" texto="Solicitudes asignadas" />
+            <Baldosa href="/calculadoras" icono="informe" texto="Calculadoras" />
             <Baldosa href="/panel/crm/guia" icono="birrete" texto="Guía de primera asesoría" />
           </div>
         </Seccion>
@@ -153,6 +166,7 @@ export default async function InicioCrm() {
           </ul>
           <FormGrupo />
         </Seccion>
+      </div>
       </div>
     </>
   );

@@ -7,7 +7,8 @@ import { urlSitio } from "../sitio";
 import { mensajeError } from "../errores";
 import { nombreMateria } from "../materias";
 import { getDb, auditar } from "../db";
-import { cifrar, codigoAleatorio, codigoCaso } from "../crypto";
+import { cifrar, codigoAleatorio } from "../crypto";
+import { huellaCorreo } from "../huella-correo";
 import { usuarioActual } from "../auth";
 import { ipActual } from "../guards";
 import { permitir } from "../ratelimit";
@@ -55,19 +56,20 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
 
   const { texto: relato } = limpiarDatosPersonales(s.relato);
   const codigo = codigoAleatorio();
-  const codigoSeguimiento = codigoCaso("CASO");
 
   let id: number;
+  let corto = "";
   try {
     const d = await getDb();
     const r = await d.execute({
       sql: `INSERT INTO solicitudes
-              (codigo, codigo_seguimiento, asesor_id, cliente_id, materia, region, urgencia, presupuesto,
-               relato_enc, nombre_enc, email_enc, telefono_enc, derivar_ok, conservar_datos, terminos_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (codigo, asesor_id, cliente_id, materia, region, urgencia, presupuesto,
+               relato_enc, nombre_enc, email_enc, telefono_enc, derivar_ok, conservar_datos, terminos_version,
+               contraparte_enc, email_hash, fecha_hecho, origen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         RETURNING id, codigo_seguimiento`,
       args: [
         codigo,
-        codigoSeguimiento,
         asesor?.usuarioId ?? null,
         clienteId,
         s.materia,
@@ -81,9 +83,14 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
         s.derivar === "on" ? 1 : 0,
         s.conservar === "on" ? 1 : 0,
         String(terminos.version),
+        s.contraparte ? cifrar(s.contraparte, "solicitud.contraparte") : "",
+        huellaCorreo(s.email),
+        s.fecha_hecho,
+        s.via === "enlace" && asesor ? "enlace" : "web",
       ],
     });
-    id = Number(r.lastInsertRowid);
+    id = Number(r.rows[0].id);
+    corto = String(r.rows[0].codigo_seguimiento);
     await registrarEvento(id, "etapa", "Recibida");
     await auditar(clienteId, "solicitud_creada", "solicitud", id);
   } catch (e) {
@@ -98,7 +105,7 @@ export async function crearSolicitud(_prev: EstadoForm, fd: FormData): Promise<E
     } else {
       await avisarCasoAbierto(id);
     }
-    await correos.confirmacion(s.email, `${urlSitio()}/seguimiento/${codigo}`, abierta);
+    await correos.confirmacion(s.email, `${urlSitio()}/seguimiento/${codigo}`, abierta, corto, `${urlSitio()}/seguir`);
   });
   redirect(`/seguimiento/${codigo}?nueva=1`);
 }

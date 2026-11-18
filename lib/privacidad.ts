@@ -6,7 +6,7 @@ export const DIAS_DE_GRACIA = 15;
 
 /**
  * Elimina los datos personales de un caso y deja solo lo anónimo (materia, etapa, fechas, resultado),
- * que sirve para las estadísticas del asesor. Borra relato, contacto, informe, antecedentes e historial.
+ * que sirve para las estadísticas del asesor. Borra relato, contacto, mensajes, informe, antecedentes e historial.
  */
 export async function anonimizarSolicitud(id: number) {
   const d = await getDb();
@@ -16,6 +16,8 @@ export async function anonimizarSolicitud(id: number) {
       { sql: "DELETE FROM pendientes WHERE solicitud_id = ?", args: [id] },
       { sql: "DELETE FROM documentos WHERE solicitud_id = ?", args: [id] },
       { sql: "DELETE FROM seguimiento WHERE solicitud_id = ?", args: [id] },
+      { sql: "DELETE FROM cobros WHERE solicitud_id = ?", args: [id] },
+      { sql: "DELETE FROM mensajes WHERE solicitud_id = ?", args: [id] },
       {
         sql: `UPDATE solicitudes
                  SET relato_enc = ?, nombre_enc = ?, email_enc = ?, telefono_enc = '', abogado_destino_enc = '',

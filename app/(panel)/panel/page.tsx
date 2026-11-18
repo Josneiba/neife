@@ -3,13 +3,16 @@ import Link from "next/link";
 import { AvanceMini } from "@/components/Avance";
 import { ContactoRapido } from "@/components/ContactoRapido";
 import { Icono } from "@/components/Iconos";
+import { sinLeerDelAsesor } from "@/lib/mensajes-datos";
 import { requerirAbogado } from "@/lib/guards";
 import { listarCasos, resumenSemana, type FilaCaso } from "@/lib/datos";
 import { diasDesde, estadoAbogado, faltantes, nombreResultado, siguientePaso } from "@/lib/etapas";
-import { espera, fechaCorta, folio } from "@/lib/formato";
+import { espera, fechaCorta, } from "@/lib/formato";
+import { plazoDe } from "@/lib/plazos";
 import { nombreMateria, nombreUrgencia } from "@/lib/materias";
+import { hoyLocal } from "@/lib/crm/fechas";
 
-export const metadata: Metadata = { title: "Casos" };
+export const metadata: Metadata = { title: "Solicitudes asignadas" };
 export const dynamic = "force-dynamic";
 
 const VISTAS = [
@@ -22,7 +25,7 @@ const VISTAS = [
 ] as const;
 
 const ABIERTOS = ["nueva", "aceptada", "informe", "entregada", "derivada"];
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => hoyLocal();
 
 /** Sin movimiento hace 7 días o más. */
 const detenido = (f: FilaCaso) => ABIERTOS.includes(f.solicitud.estado) && diasDesde(f.solicitud.actualizadoEn) >= 7;
@@ -52,7 +55,7 @@ export default async function Casos({ searchParams }: { searchParams: Promise<Re
   const u = await requerirAbogado();
   const sp = await searchParams;
   const vista = VISTAS.find((v) => v.clave === sp.v) ?? VISTAS[0];
-  const [casos, semana] = await Promise.all([listarCasos(u.id), resumenSemana(u.id)]);
+  const [casos, semana, sinLeer] = await Promise.all([listarCasos(u.id), resumenSemana(u.id), sinLeerDelAsesor(u.id)]);
   const avanceMeta = Math.min(100, Math.round((semana.confirmados / Math.max(semana.meta, 1)) * 100));
 
   const conteo = (estados: readonly string[]) => casos.filter((c) => estados.includes(c.solicitud.estado)).length;
@@ -76,8 +79,8 @@ export default async function Casos({ searchParams }: { searchParams: Promise<Re
     <>
       <header className="p-cab">
         <div className="p-cab-izq">
-          <h1>Mis casos</h1>
-          <span className="p-sub">Tus casos, ordenados por urgencia · <Link href="/panel/bandeja">Ver solicitudes abiertas</Link></span>
+          <h1>Solicitudes asignadas</h1>
+          <span className="p-sub">Las que tomaste, ordenadas por urgencia · <Link href="/panel/bandeja">Ver solicitudes abiertas</Link></span>
         </div>
         <ContactoRapido />
       </header>
@@ -119,7 +122,6 @@ export default async function Casos({ searchParams }: { searchParams: Promise<Re
               <th scope="col">Persona</th>
               <th scope="col">Materia</th>
               <th scope="col">Avance</th>
-              <th scope="col">Falta</th>
               <th scope="col">Abogado</th>
               <th scope="col">Siguiente paso</th>
               <th scope="col">Contacto</th>
@@ -141,20 +143,23 @@ export default async function Casos({ searchParams }: { searchParams: Promise<Re
                 <tr key={s.id}>
                   <td className="num">
                     <Link className="folio" href={`/panel/solicitudes/${s.id}`}>
-                      {folio(s.codigo)}
+                      {s.codigoSeguimiento}
                     </Link>
+                    {sinLeer.get(s.id) ? <span className="badge-msg" title="Mensajes sin leer">✉ {sinLeer.get(s.id)}</span> : null}
                   </td>
                   <td className="persona">
                     {s.nombre}
                     <small>{s.region}</small>
                   </td>
-                  <td>{nombreMateria(s.materia)}</td>
+                  <td>
+                    {nombreMateria(s.materia)}
+                    {(() => {
+                      const pl = ABIERTOS.includes(s.estado) ? plazoDe(s.materia, s.fechaHecho, hoy()) : null;
+                      return pl && pl.tono !== "ok" ? <small className="plazo-chip" data-tono={pl.tono}>{pl.texto} para reclamar</small> : null;
+                    })()}
+                  </td>
                   <td>
                     <AvanceMini estado={s.estado} />
-                  </td>
-                  <td className="falta" data-oculto-movil data-vacio={resumenFalta(f) === "—" ? "" : undefined}>
-                    <span className="ico-movil"><Icono nombre="circulo" tam={13} /></span>
-                    {resumenFalta(f)}
                   </td>
                   <td data-oculto-movil data-vacio={estadoAbogado(s) === "sin" ? "" : undefined}>
                     <span className="ico-movil"><Icono nombre="escudo" tam={13} /></span>
@@ -165,7 +170,10 @@ export default async function Casos({ searchParams }: { searchParams: Promise<Re
                       return <span className="vacio">Sin asignar</span>;
                     })()}
                   </td>
-                  <td className="siguiente">{s.estado === "cerrada" && s.resultado ? nombreResultado(s.resultado) : sig.texto}</td>
+                  <td className="siguiente">
+                    {s.estado === "cerrada" && s.resultado ? nombreResultado(s.resultado) : sig.texto}
+                    {resumenFalta(f) !== "—" ? <small>Falta: {resumenFalta(f)}</small> : null}
+                  </td>
                   <td className="num" data-oculto-movil data-vacio={s.estado !== "nueva" && !(s.proximoContacto && ABIERTOS.includes(s.estado)) && !detenido(f) ? "" : undefined}>
                     <span className="ico-movil"><Icono nombre="reloj" tam={13} /></span>
                     {s.estado === "nueva" ? (

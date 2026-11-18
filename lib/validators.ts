@@ -1,4 +1,6 @@
+import { CONDICIONES } from "./verificacion-titulo";
 import { z } from "zod";
+import { esFecha } from "./crm/fechas";
 import { MATERIAS, PRESUPUESTOS, REGIONES, URGENCIAS } from "./materias";
 
 const texto = (min: number, max: number, nombre: string) => {
@@ -50,8 +52,8 @@ export const esquemaRegistroAbogado = z.object({
   nombre: texto(2, 120, "tu nombre"),
   email: correo,
   clave,
-  titulo: texto(3, 120, "tu condición profesional"),
-  registro: texto(3, 160, "tu número de colegiatura o universidad"),
+  titulo: z.enum(CONDICIONES, { error: "Elige tu condición profesional." }),
+  registro: texto(4, 160, "el código de tu certificado o tu universidad"),
   declaracion: z.literal("on", { error: "Debes confirmar que los datos son verdaderos." }),
 });
 
@@ -74,6 +76,14 @@ export const esquemaSolicitud = z.object({
   consentimiento: z.literal("on", { error: "Debes aceptar el tratamiento de tus datos para continuar." }),
   derivar: z.string().optional().default(""),
   conservar: z.string().optional().default(""),
+  contraparte: z.string().trim().max(120, { error: "El nombre de la otra parte es muy largo." }).optional().default(""),
+  fecha_hecho: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine((t) => t === "" || esFecha(t), { error: "Escribe una fecha válida." }),
+  via: z.enum(["", "enlace"]).optional().default(""),
 });
 
 export const esquemaPerfil = z.object({
@@ -81,6 +91,15 @@ export const esquemaPerfil = z.object({
   titulo: texto(3, 120, "tu condición profesional"),
   registro: texto(3, 160, "tu número de colegiatura o universidad"),
   ubicacion: z.string().trim().max(120).default(""),
+  direccion: z.string().trim().max(160, { error: "La dirección es muy larga." }).default(""),
+  lat: z.preprocess((x) => (x === "" || x == null ? undefined : x), z.coerce.number().min(-56).max(-17).optional()),
+  lng: z.preprocess((x) => (x === "" || x == null ? undefined : x), z.coerce.number().min(-110).max(-66).optional()),
+  honorarios: z
+    .string()
+    .trim()
+    .max(500, { error: "Los honorarios son muy largos." })
+    .refine((t) => t.split(/\r?\n/).filter((l) => l.trim()).length <= 6, { error: "Máximo 6 líneas." })
+    .default(""),
   bio: z.string().trim().max(900, { error: "La presentación es muy larga (máximo 900 caracteres)." }).default(""),
   precio_informe: z.coerce
     .number({ error: "El precio debe ser un número." })

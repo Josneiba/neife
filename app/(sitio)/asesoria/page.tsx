@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { FichaAsesor } from "@/components/FichaAsesor";
 import Link from "next/link";
 import { listarAsesoresPublicos } from "@/lib/datos";
-import { nombreMateria } from "@/lib/materias";
-import { iniciales, pesos } from "@/lib/formato";
-import { resumenResenas, textoTiempo, tiempoRespuestaHoras } from "@/lib/resenas";
+import { resumenResenas, tiempoRespuestaHoras } from "@/lib/resenas";
 
 export const metadata: Metadata = {
   title: "Asesoría",
@@ -38,68 +37,7 @@ export default async function Asesoria() {
           </Link>
         </div>
       ) : (
-        asesores.map((a) => (
-          <article key={a.usuarioId} className="perfil" aria-labelledby={`asesor-${a.usuarioId}`}>
-            <div className="perfil-lado">
-              <div className="perfil-iniciales" aria-hidden="true">
-                {iniciales(a.nombre)}
-              </div>
-              <h2 id={`asesor-${a.usuarioId}`}>{a.nombre}</h2>
-              <p className="perfil-titulo">{a.titulo}</p>
-              <span className="verificado">Cuenta verificada por Neife</span>
-              {extras.get(a.usuarioId)?.resenas.total ? (
-                <p className="perfil-resena" aria-label={`${extras.get(a.usuarioId)?.resenas.promedio} de 5 estrellas`}>
-                  <span aria-hidden="true">★</span> <strong>{extras.get(a.usuarioId)?.resenas.promedio}</strong> · {extras.get(a.usuarioId)?.resenas.total} reseña{extras.get(a.usuarioId)?.resenas.total === 1 ? "" : "s"}
-                </p>
-              ) : null}
-            </div>
-            <div className="perfil-cuerpo">
-              {a.bio ? (
-                <div>
-                  <h3>Presentación</h3>
-                  <p style={{ whiteSpace: "pre-line" }}>{a.bio}</p>
-                </div>
-              ) : null}
-              <dl className="datos">
-                {a.materias.length > 0 ? (
-                  <>
-                    <dt>Materias</dt>
-                    <dd>{a.materias.map(nombreMateria).join(", ")}</dd>
-                  </>
-                ) : null}
-                {a.ubicacion ? (
-                  <>
-                    <dt>Atención</dt>
-                    <dd>{a.ubicacion}</dd>
-                  </>
-                ) : null}
-                {extras.get(a.usuarioId)?.horas != null ? (
-                  <>
-                    <dt>Suele responder en</dt>
-                    <dd>{textoTiempo(extras.get(a.usuarioId)?.horas ?? 0)}</dd>
-                  </>
-                ) : null}
-                <dt>Informe de orientación</dt>
-                <dd>{pesos(a.precioInforme)}</dd>
-              </dl>
-              {extras.get(a.usuarioId)?.resenas.ultimas.length ? (
-                <div>
-                  <h3>Lo que dicen las personas atendidas</h3>
-                  {extras.get(a.usuarioId)?.resenas.ultimas.map((resena, i) => (
-                    <blockquote key={i} className="perfil-cita">
-                      “{resena.comentario}” <small>— {resena.estrellas} de 5</small>
-                    </blockquote>
-                  ))}
-                </div>
-              ) : null}
-              <div className="botones">
-                <Link href={`/asesoria/solicitar?asesor=${a.usuarioId}`} className="btn btn-primario">
-                  Contar mi caso
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))
+        asesores.map((a) => <FichaAsesor key={a.usuarioId} a={a} extras={extras.get(a.usuarioId)} />)
       )}
 
       <section className="seccion" aria-labelledby="t-como">

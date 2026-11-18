@@ -36,6 +36,8 @@ Para una base local, usa `postgres://postgres@127.0.0.1:5432/neife` como `DATABA
 - Base nueva: `npm run db:migrate`.
 - Base existente creada por la versión anterior: primero verifica que coincide con la baseline y respáldala; después, usando `DIRECT_URL`, ejecuta `npx prisma migrate resolve --applied 0_baseline` y `npm run db:migrate`. **No marques una base como baseline si no coincide ni ejecutes este paso sin respaldo.**
 - Cambio de esquema: edita `prisma/schema.prisma`, corre `npx prisma migrate dev --name describe_el_cambio` en desarrollo, revisa el SQL generado (en especial si toca búsqueda, RLS o `ahora()`), y prueba con `npm test`.
+- La migración `20261113000000_seguir_verificacion` incorpora los datos de contraparte, revisión profesional y huella de correo para vincular casos previos. Aplícala con `npm run db:migrate` antes de desplegar esta versión; no se aplica al iniciar la app.
+- La migración `20261114000000_lote_captacion` agrega dirección y honorarios públicos del asesor, coordenadas del mapa, fecha del hecho y aceptación del mandato. También debe aplicarse antes de iniciar esta versión; respalda primero las bases existentes.
 - `npm run build` aplica migraciones pendientes con `DIRECT_URL`, genera Prisma Client y compila Next.js. En producción, configura ambas URLs antes del build.
 
 La app todavía usa `pg` y SQL directo en sus consultas; la incorporación de Prisma en esta fase gestiona el esquema y las migraciones, sin reescribir los flujos ni los datos existentes. `docs/esquema-historico.sql` conserva el esquema anterior como referencia.
@@ -51,12 +53,27 @@ La app todavía usa `pg` y SQL directo en sus consultas; la incorporación de Pr
 ## Recorrido
 
 1. La persona entra a **Asesoría**, cuenta su caso (materia, región, relato) y ve **las normas que podrían aplicar**. Esa consulta no se guarda.
-2. Si quiere ayuda, deja sus datos y autoriza (o no) que su informe se comparta con un abogado. Recibe un enlace de seguimiento con el avance.
+2. Si quiere ayuda, deja sus datos y autoriza (o no) que su informe se comparta con un abogado. Recibe un código corto para consultar el avance en `/seguir`; el detalle requiere confirmar el correo.
 3. El asesor ve el caso en **Casos** (tabla con avance, lo que falta y el siguiente paso), lo acepta y reúne los antecedentes.
 4. **Preparar informe** arma una ficha tipo minuta con hechos, normas, derechos, vía habitual, plazos a verificar, prueba y preguntas para el abogado. El asesor la edita, la marca final, descarga el PDF y la entrega.
 5. Con la autorización de la persona, **deriva** el caso a un abogado del rubro y lo cierra.
 
 Etapas (el «número de avance» que ven asesor y persona): 1 Recibida, 2 En contacto, 3 Informe en curso, 4 Informe entregado, 5 Derivada, 6 Cerrada. Cada cambio queda en el historial del caso junto con las notas del asesor.
+
+## Captación y agenda
+
+- Los asesores pueden publicar su perfil en `/a/<slug>` y compartir su enlace personal o QR desde `/panel/enlace`. Las solicitudes de ese enlace quedan marcadas con su origen.
+- `/calculadoras` ofrece cálculos orientativos de plazos y finiquito. No consideran feriados ni sustituyen la revisión de un abogado.
+- El perfil permite publicar ubicación y honorarios. La persona puede reservar una hora disponible desde su seguimiento; la cita queda vinculada al CRM y se puede agregar al calendario con archivos `.ics`.
+- El asesor puede proponer un mandato para aceptación expresa. El registro de aceptación en Neife **no es una firma electrónica avanzada ni reemplaza un contrato revisado por un abogado**.
+- La persona y su asesor pueden escribirse desde la ficha privada del caso. Los mensajes se cifran con `DATA_ENCRYPTION_KEY`; los avisos por correo solo dicen que hay un mensaje nuevo y enlazan al caso, sin incluir su contenido.
+
+### Pagos por transferencia
+
+- El asesor puede registrar una cuenta de depósito en `/panel/perfil` y crear cobros desde la ficha de una solicitud. La persona ve los datos de depósito en su seguimiento mientras tenga un cobro pendiente o con transferencia informada.
+- La cuenta bancaria y el número de operación se cifran con `DATA_ENCRYPTION_KEY`; la vista de los datos de depósito se audita. La persona informa fecha y número de operación, y el asesor confirma o anula el cobro. **No se procesan tarjetas ni pagos en línea.**
+- La migración `20261116000000_pagos` crea las tablas de cuentas de depósito y cobros. Respáldala y aplícala con `npm run db:migrate` antes de usar los pagos. `npm run build` también aplica migraciones pendientes mediante `DIRECT_URL`; no lo ejecutes contra una base sin respaldo y autorización.
+- La migración `20261117000000_mensajes` crea el hilo cifrado entre la persona y su asesor. Aplícala con `npm run db:migrate` antes de habilitar los mensajes. No se ejecutó durante esta integración.
 
 ## Subir las leyes (tu parte como desarrollador)
 
@@ -86,7 +103,7 @@ Hay:
 - **Cifrado AES-256-GCM** del relato, nombre, correo y teléfono de la persona y del contenido del informe. El formato lleva versión y el dato queda atado a su columna (no se puede copiar el texto cifrado a otra).
 - Contraseñas con **bcrypt** (costo 12). Sesión en cookie `httpOnly`, `sameSite=lax` y `secure` en producción, firmada (JWT HS256). El rol y el estado se leen de la base en cada visita: si rechazas o desactivas a un asesor, pierde el acceso de inmediato.
 - Cada asesor solo puede abrir **sus** solicitudes e informes (la consulta siempre filtra por su cuenta). El administrador no ve casos.
-- Enlace de seguimiento con código aleatorio de 128 bits. El informe solo se descarga si el asesor lo entregó.
+- Código de seguimiento corto `XXXX-XXXX`, generado aleatoriamente; se siguen aceptando los códigos históricos. El detalle del caso requiere confirmar el correo y el informe solo se descarga si el asesor lo entregó.
 - Límite de intentos (login, registro, solicitudes, descargas), campo trampa anti-robots, validación de todos los datos en el servidor, y limpieza automática de RUT, correos y teléfonos que se cuelen en el relato.
 - Cabeceras de seguridad (CSP, HSTS, X-Frame-Options…) en producción, y registro de acciones sensibles (tabla `auditoria`).
 - `npm run limpiar -- 12` borra solicitudes cerradas o rechazadas con más de 12 meses. En Vercel esa retención también se aplica automáticamente cada mes mediante `/api/cron/limpiar`.

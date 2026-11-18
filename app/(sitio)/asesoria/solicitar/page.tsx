@@ -22,6 +22,9 @@ export default async function Solicitar({
   const pedido = Number(Array.isArray(sp.asesor) ? sp.asesor[0] : sp.asesor);
   const asesorInicial = asesores.some((a) => a.usuarioId === pedido) ? pedido : undefined;
 
+  const via = (Array.isArray(sp.via) ? sp.via[0] : sp.via) === "enlace" ? "enlace" : "";
+  const fechaQ = Array.isArray(sp.fecha) ? sp.fecha[0] : sp.fecha;
+  const fechaInicial = fechaQ && /^\d{4}-\d{2}-\d{2}$/.test(fechaQ) ? fechaQ : "";
   const m = Array.isArray(sp.materia) ? sp.materia[0] : sp.materia;
   const materiaInicial = m && esMateria(m) ? m : "";
   const puedeSolicitar = asesores.length > 0 && terminos.publicado;
@@ -57,6 +60,8 @@ export default async function Solicitar({
         motivoSolicitud={motivoSolicitud}
         asesorInicial={asesorInicial}
         materiaInicial={materiaInicial}
+        via={via}
+        fechaInicial={fechaInicial}
         nombre={usuario?.rol === "cliente" ? usuario.nombre : undefined}
         email={usuario?.rol === "cliente" ? usuario.email : undefined}
       />

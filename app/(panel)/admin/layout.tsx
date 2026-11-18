@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import "../../panel.css";
 import "../../tema-panel.css";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import { Icono } from "@/components/Iconos";
 import { TablasMovil } from "@/components/TablasMovil";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const u = await requerirAdmin();

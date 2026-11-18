@@ -3,13 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb, auditar } from "../db";
+import { correos } from "../correo";
 import { requerirAdmin } from "../guards";
 import { buscarArticulos, crearNorma, eliminarNorma, EXTENSIONES_PERMITIDAS, extraerTexto } from "../normas";
 import { detectarMateria, nombreDeArchivo } from "../materia-auto";
 import { revisarNormas } from "../revision-normas";
 import { mensajeError } from "../errores";
 import { descargarNormaActual, idNormaDesde } from "../leychile";
-import { limiteArchivoMb } from "../sitio";
+import { limiteArchivoMb, urlSitio } from "../sitio";
 import { esMateria } from "../materias";
 import { coincideConFuente, fuentePorClave } from "../fuentes";
 import { datosDeForm, erroresPorCampo, esquemaNorma, type EstadoForm } from "../validators";
@@ -19,14 +20,31 @@ import { leerTerminos, validarContenidoTerminos } from "../terminos";
 const MAX_ARCHIVO_MB = limiteArchivoMb();
 const MAX_ARCHIVO = MAX_ARCHIVO_MB * 1024 * 1024;
 
-async function decidirAbogado(id: number, estado: "activo" | "rechazado") {
+async function decidirAbogado(id: number, estado: "activo" | "rechazado", nota = "") {
   const admin = await requerirAdmin();
   const d = await getDb();
-  await d.execute({
-    sql: "UPDATE usuarios SET estado = ? WHERE id = ? AND rol = 'abogado'",
-    args: [estado, id],
-  });
+  const previo = await d.execute({ sql: "SELECT nombre, email, estado FROM usuarios WHERE id = ? AND rol = 'abogado'", args: [id] });
+  const u = previo.rows[0];
+  if (!u) return;
+  await d.batch(
+    [
+      { sql: "UPDATE usuarios SET estado = ? WHERE id = ? AND rol = 'abogado'", args: [estado, id] },
+      estado === "activo"
+        ? { sql: "UPDATE perfiles SET verificado_en = ahora(), verificacion_nota = '' WHERE usuario_id = ?", args: [id] }
+        : { sql: "UPDATE perfiles SET verificado_en = '', verificacion_nota = ? WHERE usuario_id = ?", args: [nota.slice(0, 300), id] },
+    ],
+    "write",
+  );
   await auditar(admin.id, estado === "activo" ? "abogado_aprobado" : "abogado_rechazado", "usuario", id);
+  // Se avisa solo cuando cambia de verdad, para no repetir correos si se aprieta dos veces.
+  if (String(u.estado) !== estado) {
+    try {
+      if (estado === "activo") await correos.cuentaAprobada(String(u.email), String(u.nombre), `${urlSitio()}/panel/perfil`);
+      else await correos.cuentaRechazada(String(u.email), String(u.nombre), nota || "No pudimos confirmar tus datos.");
+    } catch (e) {
+      console.error("No se pudo avisar al asesor:", e instanceof Error ? e.message : e);
+    }
+  }
   revalidatePath("/admin/asesores");
   revalidatePath("/admin");
   revalidatePath("/asesoria");
@@ -34,14 +52,19 @@ async function decidirAbogado(id: number, estado: "activo" | "rechazado") {
 
 export async function aprobarAbogado(fd: FormData) {
   const id = Number(fd.get("id"));
-  if (Number.isInteger(id) && id > 0) await decidirAbogado(id, "activo");
-  redirect("/admin/asesores");
+  if (!Number.isInteger(id) || id < 1) redirect("/admin/asesores");
+  // El admin confirma que comprobó el dato en una fuente oficial; sin eso no se aprueba.
+  if (fd.get("comprobado") !== "on") redirect("/admin/asesores?e=comprobar");
+  await decidirAbogado(id, "activo");
+  redirect("/admin/asesores?ok=aprobado");
 }
 
 export async function rechazarAbogado(fd: FormData) {
   const id = Number(fd.get("id"));
-  if (Number.isInteger(id) && id > 0) await decidirAbogado(id, "rechazado");
-  redirect("/admin/asesores");
+  if (!Number.isInteger(id) || id < 1) redirect("/admin/asesores");
+  const motivo = String(fd.get("nota") ?? "").trim() || String(fd.get("motivo") ?? "").trim() || "No pudimos confirmar tus datos.";
+  await decidirAbogado(id, "rechazado", motivo);
+  redirect("/admin/asesores?ok=rechazado");
 }
 
 export async function publicarTerminos(_prev: EstadoForm, fd: FormData): Promise<EstadoForm> {

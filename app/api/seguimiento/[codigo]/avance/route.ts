@@ -2,7 +2,7 @@ import { auditar } from "@/lib/db";
 import { obtenerSolicitudPorCodigo } from "@/lib/datos";
 import { reunirExpediente } from "@/lib/expediente";
 import { generarExpedientePdf } from "@/lib/expediente-pdf";
-import { folio } from "@/lib/formato";
+import { } from "@/lib/formato";
 import { ipActual } from "@/lib/guards";
 import { permitir } from "@/lib/ratelimit";
 
@@ -24,7 +24,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ codigo: string
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="avance-${folio(s.codigo)}.pdf"`,
+      "Content-Disposition": `attachment; filename="avance-${s.codigoSeguimiento}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

@@ -107,7 +107,7 @@ export function generarPdf(datos: DatosPdf): Promise<Buffer> {
     doc.font("Helvetica").fontSize(10.5).fillColor(C.suave).text("Informe jurídico preliminar", MARGEN, doc.y + 2);
     doc.moveDown(0.6);
     const filas: [string, string][] = [
-      ["Folio", datos.folio],
+      ["Código de seguimiento", datos.folio],
       ["Fecha", datos.fecha],
       ["Materia", nombreMateria(contenido.materia)],
       ...(datos.consultante ? ([["Consultante", datos.consultante]] as [string, string][]) : []),
@@ -266,7 +266,7 @@ export function generarPdf(datos: DatosPdf): Promise<Buffer> {
         .font("Helvetica")
         .fontSize(8.5)
         .fillColor(C.suave)
-        .text(`Neife. Informe de orientación general. Folio ${datos.folio}`, MARGEN, y, { width: ANCHO - 60, lineBreak: false });
+        .text(`Neife. Informe de orientación general. Código ${datos.folio}`, MARGEN, y, { width: ANCHO - 60, lineBreak: false });
       doc.text(`${i + 1} de ${rango.count}`, MARGEN + ANCHO - 60, y, { width: 60, align: "right", lineBreak: false });
       doc.page.margins.bottom = margenAbajo;
     }

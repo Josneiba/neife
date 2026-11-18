@@ -1122,7 +1122,7 @@ export async function importarSolicitudes(abogadoId: number, solicitudId?: numbe
         telefono: tel,
         materia: String(s.materia),
         region: String(s.region),
-        origen: ["web", "referido", "whatsapp", "llamada"].includes(String(s.origen)) ? String(s.origen) : "otro",
+        origen: ["web", "referido", "whatsapp", "llamada", "enlace"].includes(String(s.origen)) ? String(s.origen) : "otro",
         etapa,
         proximoContacto: String(s.proximo_contacto ?? ""),
         solicitudId: Number(s.id),

@@ -8,7 +8,8 @@ function expedienteBase(): Expediente {
   const solicitud: Solicitud = {
     id: 1,
     codigo: "PRUEBA123",
-    codigoSeguimiento: "CASO-ABCD-EFGH-IJKL",
+    codigoSeguimiento: "K7M4-9QX2",
+    contraparte: "", fechaHecho: "", mandatoPropuesto: "", mandatoEn: "",
     asesorId: 7,
     clienteId: null,
     materia: "civil",

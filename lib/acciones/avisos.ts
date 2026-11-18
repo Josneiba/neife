@@ -9,6 +9,7 @@ import { permitir } from "../ratelimit";
 import { correos } from "../correo";
 import { urlSitio } from "../sitio";
 import { guardarAlertas, type Alertas } from "../alertas";
+import { guiaDe } from "../guias";
 import { guardarHorario, reservarHora, reservaVigente, type Horario } from "../agenda-publica";
 import { guardarResena } from "../resenas";
 import { obtenerSolicitudPorCodigo, registrarEvento } from "../datos";
@@ -79,13 +80,18 @@ export async function reservarMiHora(fd: FormData) {
   if (await reservaVigente(solicitud.asesorId, solicitud.id)) redirect(`${volver}?hora=ya`);
 
   const [fecha, hora] = String(fd.get("hora") ?? "").split("|");
-  const reserva = await reservarHora({
-    asesorId: solicitud.asesorId,
-    solicitudId: solicitud.id,
-    codigo: solicitud.codigo,
-    fecha: fecha ?? "",
-    hora: hora ?? "",
-  });
+  let reserva: Awaited<ReturnType<typeof reservarHora>>;
+  try {
+    reserva = await reservarHora({
+      asesorId: solicitud.asesorId,
+      solicitudId: solicitud.id,
+      fecha: fecha ?? "",
+      hora: hora ?? "",
+    });
+  } catch (error) {
+    console.error("No se pudo crear la reserva pública en el CRM.", error);
+    redirect(`${volver}?hora=error`);
+  }
   if (!reserva) redirect(`${volver}?hora=ocupada`);
   await registrarEvento(solicitud.id, "nota", `Hora reservada: ${fechaDMA(reserva.fecha)} a las ${reserva.horaIni}.`);
 
@@ -105,7 +111,9 @@ export async function reservarMiHora(fd: FormData) {
     if (solicitud.email.includes("@")) {
       await correos.avance(
         solicitud.email,
-        `Reservaste tu hora: ${fechaDMA(reserva.fecha)} a las ${reserva.horaIni}. Tu asesor la verá en su agenda.`,
+        `Reservaste tu hora: ${fechaDMA(reserva.fecha)} a las ${reserva.horaIni}. Tu asesor la verá en su agenda.${
+          guiaDe(solicitud.materia) ? `\n\nConviene tener a mano:\n${guiaDe(solicitud.materia)!.documentos.map((x) => `- ${x}`).join("\n")}` : ""
+        }\n\nAgrégala a tu calendario: ${urlSitio()}/api/seguimiento/${solicitud.codigo}/cita`,
         `${urlSitio()}/seguimiento/${solicitud.codigo}`,
       );
     }

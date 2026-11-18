@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Etiqueta } from "@/components/Etiqueta";
 import { requerirAbogado } from "@/lib/guards";
 import { listarInformesAsesor } from "@/lib/datos";
-import { fechaCorta, folio } from "@/lib/formato";
+import { fechaCorta, } from "@/lib/formato";
 import { nombreMateria } from "@/lib/materias";
 
 export const metadata: Metadata = { title: "Informes" };
@@ -38,7 +38,7 @@ export default async function Informes() {
               <tr key={i.id}>
                 <td className="num">
                   <Link className="folio" href={`/panel/informes/${i.id}`}>
-                    {folio(i.codigo)}
+                    {i.codigoSeguimiento}
                   </Link>
                 </td>
                 <td>{nombreMateria(i.materia)}</td>

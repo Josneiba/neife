@@ -17,7 +17,10 @@ export default async function Notas() {
       <BarraApp titulo="Notas rápidas" />
       <div className="crm-pagina">
         {notas.length === 0 ? (
-          <Vacio>Aún no hay notas. En la ficha de un cliente, elige «Nota» en «Registrar».</Vacio>
+          <Vacio>
+            Aún no hay notas. En la ficha de un cliente, elige «Nota» en «Registrar».{" "}
+            <Link href="/panel/crm/clientes">Ir a mis clientes</Link>
+          </Vacio>
         ) : (
           <ol className="crm-historial">
             {notas.map((n) => (

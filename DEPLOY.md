@@ -26,7 +26,8 @@ Sube la carpeta a un repositorio **privado**. `.env.local` no se sube (ya está 
 | `DIRECT_URL` | conexión directa/session de Supabase (puerto 5432), para migraciones |
 | `DATA_ENCRYPTION_KEY` | 64 caracteres hex. `npm run setup` en tu computador crea una; **no la cambies después** |
 | `SESSION_SECRET` | texto largo aleatorio |
-| `CRON_SECRET` | texto largo aleatorio (protege el aviso diario) |
+| `CRON_SECRET` | texto largo aleatorio (protege las rutas de tareas programadas) |
+| `PROXY_HOPS` | opcional: cantidad de proxies confiables delante de la app si se usa `X-Forwarded-For` fuera de Vercel (entero positivo; por defecto `1`) |
 | `SITE_URL` | `https://tu-dominio` (sin barra final) |
 | `CONTACT_EMAIL` | correo público de contacto |
 | `CONTACT_PHONE` | teléfono público (opcional) |
@@ -51,6 +52,7 @@ Entra como administrador a `/admin/biblioteca`. Pulsa «Cargar leyes base» (31 
 - [ ] Probaste que el cron de privacidad y la limpieza mensual están habilitados en Vercel.
 - [ ] Copia de `DATA_ENCRYPTION_KEY` guardada fuera de Vercel.
 - [ ] Probaste: enviar una solicitud, recibir el correo, aprobar un asesor, recuperar una contraseña.
+- [ ] Antes de usar mensajería, respaldaste la base y aplicaste `20261117000000_mensajes` con `npm run db:migrate`; el build de producción también aplica migraciones pendientes.
 - [ ] Dominio propio con HTTPS (Vercel lo da gratis).
 
 ## Límites que conviene conocer

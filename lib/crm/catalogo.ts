@@ -202,6 +202,7 @@ export function nombreCanal(c: string): string {
 
 export const ORIGENES_CRM = [
   { clave: "web", nombre: "Sitio web" },
+  { clave: "enlace", nombre: "Mi enlace o QR" },
   { clave: "referido", nombre: "Referido" },
   { clave: "whatsapp", nombre: "WhatsApp" },
   { clave: "llamada", nombre: "Llamada" },

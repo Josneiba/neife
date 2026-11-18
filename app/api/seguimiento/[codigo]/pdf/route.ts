@@ -1,6 +1,6 @@
 import { auditar } from "@/lib/db";
 import { obtenerInformePorSolicitud, obtenerPerfil, obtenerSolicitudPorCodigo } from "@/lib/datos";
-import { folio } from "@/lib/formato";
+import { } from "@/lib/formato";
 import { generarPdf } from "@/lib/informe-pdf";
 import { normasFaltantes } from "@/lib/fuentes";
 import { ipActual } from "@/lib/guards";
@@ -22,7 +22,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ codigo: string
 
   const buf = await generarPdf({
     normasPendientes: await normasFaltantes(informe.contenido.materia),
-    folio: folio(solicitud.codigo),
+    folio: solicitud.codigoSeguimiento,
     fecha: new Intl.DateTimeFormat("es-CL", { dateStyle: "long", timeZone: "America/Santiago" }).format(new Date()),
     asesorNombre: perfil.nombre,
     asesorTitulo: perfil.titulo,
@@ -35,7 +35,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ codigo: string
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="informe-${folio(solicitud.codigo)}.pdf"`,
+      "Content-Disposition": `attachment; filename="informe-${solicitud.codigoSeguimiento}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

@@ -27,6 +27,7 @@ import { datosDeForm, erroresPorCampo, esquemaContactoRapido, esquemaPerfil, typ
 import { importarSolicitudes } from "../crm/servicio";
 import { avisarAvanceSiCorresponde } from "../avance-correo";
 import { avisarCasoAbierto } from "../alertas";
+import { hoyLocal, sumarDias } from "../crm/fechas";
 
 function entero(v: unknown): number {
   const n = Number(v);
@@ -431,7 +432,8 @@ async function guardarPerfilInterna(_prev: EstadoForm, fd: FormData): Promise<Es
       { sql: "UPDATE usuarios SET nombre = ? WHERE id = ?", args: [p.nombre, u.id] },
       {
         sql: `UPDATE perfiles
-                 SET titulo = ?, registro = ?, materias = ?, ubicacion = ?, bio = ?,
+                 SET titulo = CASE WHEN verificado_en <> '' THEN titulo ELSE ? END,
+                     registro = CASE WHEN verificado_en <> '' THEN registro ELSE ? END, materias = ?, ubicacion = ?, direccion = ?, lat = ?, lng = ?, honorarios = ?, bio = ?,
                      precio_informe = ?, instrucciones_pago = ?, publicado = ?, meta_semanal = ?
                WHERE usuario_id = ?`,
         args: [
@@ -439,6 +441,10 @@ async function guardarPerfilInterna(_prev: EstadoForm, fd: FormData): Promise<Es
           p.registro,
           materias.join(","),
           p.ubicacion,
+          p.direccion,
+          p.direccion ? (p.lat ?? null) : null,
+          p.direccion ? (p.lng ?? null) : null,
+          p.honorarios.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join("\n"),
           p.bio,
           p.precio_informe,
           p.instrucciones_pago,
@@ -473,7 +479,7 @@ export async function contactoRapido(_prev: EstadoForm, fd: FormData): Promise<E
   const r = await conMensaje(async () => {
     const esCorreo = c.contacto.includes("@");
     const codigo = codigoAleatorio();
-    const manana = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    const manana = sumarDias(hoyLocal(), 1);
     const d = await getDb();
     const ins = await d.execute({
       sql: `INSERT INTO solicitudes

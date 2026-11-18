@@ -1,18 +1,32 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Pasos } from "@/components/Avance";
+import { cobrosDeSolicitud, datosParaPagar } from "@/lib/pagos-datos";
+import { ETIQUETA_COBRO, TIPOS_CUENTA } from "@/lib/pagos";
+import { informarTransferencia } from "@/lib/acciones/pagos";
 import { BotonCopiar } from "@/components/BotonCopiar";
 import { Icono } from "@/components/Iconos";
 import { listarPendientes, obtenerInformePorSolicitud, obtenerPerfil, obtenerSolicitudPorCodigo } from "@/lib/datos";
 import { avance, TOTAL_ETAPAS } from "@/lib/etapas";
-import { fechaLarga, folio, pesos } from "@/lib/formato";
+import Link from "next/link";
+import { fechaLarga, iniciales, pesos } from "@/lib/formato";
+import { Verificacion } from "@/components/Verificacion";
+import { guiaDe } from "@/lib/guias";
+import { mensajeDeEstado } from "@/lib/seguir";
+import { URL_VERIFICAR_TITULO } from "@/lib/verificacion-titulo";
 import { nombreMateria } from "@/lib/materias";
 import { borrarMisDatos, cambiarConservacion } from "@/lib/acciones/solicitudes";
 import { DIAS_DE_GRACIA } from "@/lib/privacidad";
+import { aceptarMandato } from "@/lib/acciones/mandato";
+import { plazoDe } from "@/lib/plazos";
+import SelectorHora from "@/components/SelectorHora";
 import { huecosLibres, reservaVigente } from "@/lib/agenda-publica";
 import { textoTiempo, tiempoRespuestaHoras, yaTieneResena } from "@/lib/resenas";
 import { enviarResena, reservarMiHora } from "@/lib/acciones/avisos";
-import { nombreDiaLargo } from "@/lib/crm/fechas";
+import { hoyLocal, nombreDiaLargo } from "@/lib/crm/fechas";
+import { listarMensajes, marcarLeidos } from "@/lib/mensajes-datos";
+import { HiloMensajes } from "@/components/HiloMensajes";
+import { enviarMensajePersona } from "@/lib/acciones/mensajes";
 
 const diaCorto = (fecha: string) =>
   new Intl.DateTimeFormat("es-CL", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
@@ -36,11 +50,10 @@ export default async function Seguimiento({
   const sp = await searchParams;
   const s = await obtenerSolicitudPorCodigo(codigo);
   if (!s) notFound();
-
   if (s.anonimizada) {
     return (
       <div className="contenedor pagina-estrecha">
-        <h1>Solicitud {folio(s.codigo)}</h1>
+        <h1>Solicitud {s.codigoSeguimiento}</h1>
         <div className="aviso aviso-ok" style={{ marginTop: 20 }}>
           Esta asesoría terminó y, como pediste, <strong>tus datos personales fueron eliminados</strong>. Ya no hay nada tuyo guardado en este caso.
         </div>
@@ -48,6 +61,9 @@ export default async function Seguimiento({
       </div>
     );
   }
+  const puedeEscribirMensaje = Boolean(s.asesorId) && ["nueva", "aceptada", "informe", "entregada", "derivada"].includes(s.estado);
+  if (puedeEscribirMensaje) await marcarLeidos(s.id, "persona");
+  const mensajes = puedeEscribirMensaje ? await listarMensajes(s.id) : [];
   const perfil = s.asesorId ? await obtenerPerfil(s.asesorId) : null;
   const informe = ["entregada", "derivada", "cerrada"].includes(s.estado) ? await obtenerInformePorSolicitud(s.id) : null;
   const hayInforme = Boolean(informe?.entregado);
@@ -55,6 +71,10 @@ export default async function Seguimiento({
     ? (await listarPendientes(s.id)).filter((p) => !p.hecho)
     : [];
   const asesor = perfil?.nombre ?? (s.asesorId ? "El asesor" : "Un asesor de neife");
+  const cobros = s.asesorId && !s.anonimizada ? (await cobrosDeSolicitud(s.id)).filter((c) => c.estado !== "anulado") : [];
+  const porPagar = cobros.filter((c) => c.estado === "pendiente" || c.estado === "comprobante");
+  const cuentaPago = s.asesorId && porPagar.length ? await datosParaPagar(s.id, s.asesorId, s.clienteId) : null;
+  const hoyISO = hoyLocal();
   const puedeReservar = Boolean(s.asesorId) && ["aceptada", "informe", "entregada"].includes(s.estado);
   const [huecos, reserva, horasRespuesta, resenado] = await Promise.all([
     puedeReservar && s.asesorId ? huecosLibres(s.asesorId) : Promise.resolve([]),
@@ -66,86 +86,271 @@ export default async function Seguimiento({
     ["entregada", "derivada", "cerrada"].includes(s.estado) &&
     !resenado;
 
+  const resumen = mensajeDeEstado({
+    estado: s.estado,
+    conAsesor: s.asesorId !== null,
+    confirmado: s.abogadoConfirmado,
+    creadoEn: s.creadoEn,
+    ultimaActividad: s.actualizadoEn,
+    anonimizada: false,
+  });
+  const guia = guiaDe(s.materia);
+  const sinInforme = !(["entregada", "derivada", "cerrada"].includes(s.estado) && hayInforme);
+
+  const documentos = (sufijo: string) =>
+    guia && s.asesorId && ["aceptada", "informe", "entregada"].includes(s.estado) ? (
+      <section className="seg-tarjeta" aria-labelledby={`t-docs-${sufijo}`}>
+        <h2 id={`t-docs-${sufijo}`}>Documentos que conviene reunir</h2>
+        <ul className="lista-simple">
+          {guia.documentos.map((d) => (
+            <li key={d}>
+              <Icono nombre="circulo" tam={12} /> {d}
+            </li>
+          ))}
+        </ul>
+        <p className="seg-nota">Si no tienes alguno, no pasa nada: cuéntaselo a tu asesor.</p>
+      </section>
+    ) : null;
+
   return (
-    <div className="contenedor pagina-estrecha">
+    <div className="contenedor seg">
       {sp.nueva ? (
-        <div className="aviso aviso-ok" role="status" style={{ marginBottom: 24 }}>
-          <strong>Solicitud enviada.</strong> Guarda tu código único y el enlace privado de seguimiento.
-          <div className="botones" style={{ marginTop: 10 }}>
-            <BotonCopiar texto="Copiar código" valor={s.codigoSeguimiento} />
-            <BotonCopiar />
+        <div className="aviso aviso-ok seg-nueva" role="status">
+          <div>
+            <strong>Solicitud enviada.</strong> Tu código es <b className="seg-codigo-inline">{s.codigoSeguimiento}</b>. Guárdalo: con él y tu
+            correo puedes volver desde <Link href="/seguir">Seguir mi caso</Link>, sin cuenta.
           </div>
-          <p className="ayuda" style={{ marginTop: 10 }}>Conserva también el enlace privado de esta página para consultar el avance.</p>
+          <div className="botones">
+            <BotonCopiar texto="Copiar código" valor={s.codigoSeguimiento} />
+            <BotonCopiar texto="Copiar enlace privado" />
+          </div>
         </div>
       ) : null}
 
-      <h1>Solicitud {folio(s.codigo)}</h1>
-      <p className="ayuda" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
-        Código de seguimiento: <strong>{s.codigoSeguimiento}</strong>
-      </p>
-      <p className="ayuda" style={{ marginTop: 8 }}>
-        {nombreMateria(s.materia)} · enviada el {fechaLarga(s.creadoEn)}
-        {s.estado !== "rechazada" ? ` · avance ${avance(s.estado)} de ${TOTAL_ETAPAS}` : ""}
-      </p>
+      <header className="seg-cab">
+        <div>
+          <p className="sg-etiqueta">Tu caso</p>
+          <h1>{nombreMateria(s.materia)}</h1>
+          <p className="seg-meta">
+            Enviado el {fechaLarga(s.creadoEn)}
+            {s.estado !== "rechazada" ? ` · avance ${avance(s.estado)} de ${TOTAL_ETAPAS}` : ""}
+          </p>
+        </div>
+        <div className="seg-codigo">
+          <span>Código de seguimiento</span>
+          <strong>{s.codigoSeguimiento}</strong>
+          <BotonCopiar texto="Copiar" valor={s.codigoSeguimiento} />
+        </div>
+      </header>
 
-      <div style={{ margin: "28px 0 8px" }}>
+      <div className="seg-pasos">
         <Pasos estado={s.estado} />
       </div>
 
-      <div style={{ marginTop: 28, display: "grid", gap: 16 }}>
-        {s.estado === "nueva" && (
-          <p>
-            {s.asesorId
-              ? `${asesor} aún no la revisa. Te escribirá al correo o teléfono que dejaste.`
-              : `Tu solicitud ya está a la vista de todos los asesores de Neife. El primero que la tome te escribirá al correo o teléfono que dejaste.${horasRespuesta !== null ? ` Los casos se están tomando en unas ${textoTiempo(horasRespuesta)}.` : ""}`}
-          </p>
-        )}
-        {s.asesorId && s.estado !== "nueva" && s.estado !== "rechazada" ? (
-          <p>
-            <a href={`/api/seguimiento/${encodeURIComponent(s.codigo)}/avance`} className="btn btn-secundario btn-chico">
-              Descargar el avance de mi caso (PDF)
-            </a>
-          </p>
-        ) : null}
+      <div className="seg-grid">
+        <div className="sg-estado seg-a-estado" data-tono={resumen.tono} role="status">
+          <h2>{resumen.titulo}</h2>
+          {resumen.mensaje ? <p>{resumen.mensaje}</p> : null}
+          {resumen.sugerencia ? <p className="sg-sugerencia">{resumen.sugerencia}</p> : null}
+        </div>
 
-        {(s.estado === "aceptada" || s.estado === "informe") && (
-          <>
-            <p>
-              {asesor} aceptó tu solicitud y te contactará {s.estado === "informe" ? "cuando el informe esté listo" : "con los datos que dejaste"}.
+        <div className="seg-lado">
+          <aside className="seg-a-prof" aria-label="Quién lleva tu caso">
+            {perfil ? (
+              <section className="seg-prof">
+                <h2>Tu asesor</h2>
+                <div className="seg-prof-fila">
+                  <span className="seg-avatar" aria-hidden="true">{iniciales(perfil.nombre)}</span>
+                  <div>
+                    <strong>{perfil.nombre}</strong>
+                    <p>{perfil.titulo}</p>
+                  </div>
+                </div>
+                <Verificacion titulo={perfil.titulo} verificadoEn={perfil.verificadoEn} codigo={perfil.codigoPublico} />
+                {perfil.ubicacion ? <p className="seg-nota">{perfil.ubicacion}</p> : null}
+              </section>
+            ) : (
+              <section className="seg-prof">
+                <h2>Mientras esperas</h2>
+                <p className="seg-nota">
+                  {s.asesorId ? "Tu asesor aún no completa su perfil." : "Un asesor verificado de Neife tomará tu caso."}
+                  {guia ? " Esto puede ayudarte a ir preparándote:" : ""}
+                </p>
+                {guia ? <Link className="btn btn-secundario btn-chico" href={`/guia/${s.materia}`}>Guía de {nombreMateria(s.materia)}</Link> : null}
+              </section>
+            )}
+            {s.estado === "derivada" && s.abogadoDestino ? (
+              <section className="seg-prof">
+                <h2>Abogado al que se derivó</h2>
+                <strong>{s.abogadoDestino}</strong>
+                <p className="seg-nota">
+                  {s.abogadoConfirmado ? "Confirmó que lleva tu caso." : "Aún no confirma que toma tu caso."} Antes de contratarlo, pídele el
+                  código de su certificado de título y compruébalo en el{" "}
+                  <a href={URL_VERIFICAR_TITULO} target="_blank" rel="noopener noreferrer">Poder Judicial ↗</a>.
+                </p>
+              </section>
+            ) : null}
+          </aside>
+
+          <div className="seg-solo-ancho">{documentos("b")}</div>
+
+          <details className="seg-a-mas seg-mas" open={Boolean(sp.borrar || sp.guardado)}>
+            <summary>Mis datos y privacidad</summary>
+            {sp.guardado ? <p className="aviso aviso-ok" role="status">Listo, guardamos tu preferencia.</p> : null}
+            <p className="ayuda">
+              Al terminar la asesoría, tus datos se borran {s.conservarDatos ? "solo si desmarcas esta opción" : "automáticamente"}
+              {` (${DIAS_DE_GRACIA} días después, para que alcances a descargar tu informe).`}
             </p>
-            {pendientes.length > 0 ? (
-              <div>
-                <h2 style={{ fontSize: "1.0625rem", marginBottom: 8 }}>Lo que necesita de ti</h2>
-                <ul className="lista-simple">
-                  {pendientes.map((p) => (
-                    <li key={p.id}>
-                      <Icono nombre="circulo" tam={12} /> {p.texto}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {perfil && perfil.precioInforme > 0 ? (
-              <p>
-                <strong>Informe: {pesos(perfil.precioInforme)}.</strong>{" "}
-                <span style={{ whiteSpace: "pre-line" }}>{perfil.instruccionesPago || "El asesor te indicará cómo pagar."}</span>
-              </p>
-            ) : null}
-          </>
-        )}
+            <form action={cambiarConservacion} className="seg-mas-form">
+              <input type="hidden" name="codigo" value={s.codigo} />
+              <label className="opcion">
+                <input type="checkbox" name="conservar" defaultChecked={s.conservarDatos} />
+                <span>Guardar mis datos para ayudarme de nuevo</span>
+              </label>
+              <button className="btn btn-secundario btn-chico" type="submit">Guardar preferencia</button>
+            </form>
+            <form action={borrarMisDatos} className="seg-mas-form seg-borrar">
+              <input type="hidden" name="codigo" value={s.codigo} />
+              <p className="ayuda">Borrar elimina tu solicitud, tu informe y el historial. No se puede deshacer.</p>
+              {sp.borrar === "confirma" ? <p className="error-campo" role="alert">Marca la casilla para confirmar.</p> : null}
+              {sp.borrar === "limite" ? <p className="error-campo" role="alert">Muchos intentos seguidos. Prueba más tarde.</p> : null}
+              <label className="opcion">
+                <input type="checkbox" name="confirmo" />
+                <span>Entiendo que se borra todo</span>
+              </label>
+              <button className="btn btn-secundario btn-chico" type="submit">Borrar definitivamente</button>
+            </form>
+          </details>
+        </div>
 
-        {(s.estado === "entregada" || s.estado === "derivada" || s.estado === "cerrada") && hayInforme && (
-          <div className="botones">
-            <a className="btn btn-primario" href={`/api/seguimiento/${s.codigo}/pdf`}>
-              <Icono nombre="descargar" tam={17} /> Descargar informe (PDF)
-            </a>
-          </div>
-        )}
-        {s.estado === "entregada" && (
-          <p>Si quieres que un abogado lleve tu caso, díselo a {asesor}: necesita tu autorización para compartir tu informe.</p>
-        )}
-        {s.estado === "derivada" && <p>Tu caso fue derivado a un abogado. Él o ella se pondrá en contacto contigo.</p>}
-        {s.estado === "cerrada" && <p>Este caso está cerrado.</p>}
+        <div className="seg-a-principal">
+          {puedeEscribirMensaje ? (
+            <HiloMensajes
+              mensajes={mensajes}
+              yo="persona"
+              otro={asesor}
+              accion={enviarMensajePersona}
+              ocultos={{ codigo: s.codigo }}
+              estado={typeof sp.msg === "string" ? sp.msg : undefined}
+            />
+          ) : null}
+          {(() => {
+            const pl = ["nueva", "aceptada", "informe", "entregada", "derivada"].includes(s.estado) ? plazoDe(s.materia, s.fechaHecho, hoyISO) : null;
+            return pl ? (
+              <section className="seg-plazo" data-tono={pl.tono} aria-labelledby="t-plazo">
+                <h2 id="t-plazo">{pl.titulo}: {pl.texto.toLowerCase()}</h2>
+                <p>Conviene actuar antes del <b>{pl.limite.split("-").reverse().join("-")}</b>. {pl.base} No cuenta feriados.</p>
+                {s.asesorId ? <p className="seg-nota">Si aún no lo hiciste, avísale a tu asesor hoy.</p> : null}
+              </section>
+            ) : null;
+          })()}
+          {sp.mandato === "aceptado" ? <p className="aviso aviso-ok" role="status">Listo, aceptaste el mandato. Tu asesor ya lo ve.</p> : null}
+          {sp.mandato === "marca" ? <p className="aviso aviso-error" role="alert">Marca la casilla para aceptar.</p> : null}
+          {sp.mandato === "limite" ? <p className="aviso aviso-error" role="alert">Muchos intentos seguidos. Prueba más tarde.</p> : null}
+          {sp.mandato === "error" ? <p className="aviso aviso-error" role="alert">No pudimos registrar la aceptación en el CRM. No se aceptó el mandato; vuelve a intentarlo o contacta a tu asesor.</p> : null}
+          {s.mandatoPropuesto && s.asesorId ? (
+            <section className="seg-tarjeta seg-mandato" aria-labelledby="t-mandato">
+              <h2 id="t-mandato">{s.mandatoEn ? "Mandato aceptado" : `${asesor} te propone un mandato`}</h2>
+              <details className="consent-mas seg-mandato-det">
+                <summary>Leer el mandato completo</summary>
+                <p className="seg-mandato-texto">{s.mandatoPropuesto}</p>
+              </details>
+              {s.mandatoEn ? (
+                <p className="seg-nota">Lo aceptaste el {fechaLarga(s.mandatoEn)}.</p>
+              ) : (
+                <form action={aceptarMandato} className="seg-mandato-form">
+                  <input type="hidden" name="codigo" value={s.codigo} />
+                  <label className="opcion">
+                    <input type="checkbox" name="acepto" />
+                    <span>Leí el mandato y acepto que {asesor} me represente.</span>
+                  </label>
+                  <button type="submit" className="btn btn-primario">Acepto el mandato</button>
+                  <p className="ayuda">Si algo no te calza, escríbele a tu asesor antes de aceptar.</p>
+                </form>
+              )}
+            </section>
+          ) : null}
+          {cobros.length > 0 ? (
+            <section className="seg-tarjeta seg-pagos" id="t-pagos" aria-labelledby="t-pagos-h">
+              <h2 id="t-pagos-h">Pagos</h2>
+              {sp.pago === "ok" ? <p className="aviso aviso-ok" role="status">Listo, avisamos a {asesor}. Él o ella confirmará el pago.</p> : null}
+              {sp.pago === "fecha" ? <p className="aviso aviso-error" role="alert">Revisa la fecha: no puede ser futura ni de hace más de 90 días.</p> : null}
+              {sp.pago === "operacion" ? <p className="aviso aviso-error" role="alert">Escribe el número de operación del comprobante (4 a 40 letras o números).</p> : null}
+              {sp.pago === "limite" ? <p className="aviso aviso-error" role="alert">Muchos intentos seguidos. Prueba más tarde.</p> : null}
+              <ul className="seg-cobros">
+                {cobros.map((c) => (
+                  <li key={c.id} className="seg-cobro" data-estado={c.estado}>
+                    <div className="seg-cobro-top">
+                      <strong>{c.concepto}</strong>
+                      <span className="seg-cobro-monto">{pesos(c.monto)}</span>
+                    </div>
+                    <p className="seg-cobro-estado">{ETIQUETA_COBRO[c.estado]}{c.estado === "comprobante" ? ` · operación ${c.operacion}` : ""}</p>
+                    {c.estado === "pendiente" ? (
+                      <details className="consent-mas seg-cobro-det">
+                        <summary>Ya transferí</summary>
+                        <form action={informarTransferencia} className="seg-cobro-form">
+                          <input type="hidden" name="codigo" value={s.codigo} />
+                          <input type="hidden" name="cobro" value={c.id} />
+                          <label className="pf-campo"><span>Fecha de la transferencia</span><input type="date" name="fecha" required max={hoyISO} defaultValue={hoyISO} /></label>
+                          <label className="pf-campo"><span>N.º de operación del comprobante</span><input name="operacion" required maxLength={40} autoComplete="off" /></label>
+                          <button type="submit" className="btn btn-primario btn-chico">Avisar que transferí</button>
+                        </form>
+                      </details>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {cuentaPago ? (
+                <div className="seg-cuenta">
+                  <h3>Datos para transferir</h3>
+                  <dl>
+                    <div><dt>Banco</dt><dd>{cuentaPago.banco}</dd></div>
+                    <div><dt>Tipo</dt><dd>{TIPOS_CUENTA.find(([k]) => k === cuentaPago.tipo)?.[1] ?? cuentaPago.tipo}</dd></div>
+                    <div><dt>N.º de cuenta</dt><dd><b>{cuentaPago.numero}</b> <BotonCopiar texto="Copiar" valor={cuentaPago.numero} /></dd></div>
+                    <div><dt>RUT</dt><dd><b>{cuentaPago.rut}</b> <BotonCopiar texto="Copiar" valor={cuentaPago.rut} /></dd></div>
+                    <div><dt>Titular</dt><dd>{cuentaPago.titular}</dd></div>
+                    {cuentaPago.correo ? <div><dt>Correo</dt><dd>{cuentaPago.correo}</dd></div> : null}
+                  </dl>
+                  <p className="seg-nota">Antes de transferir, confirma con {asesor} que estos datos son correctos. Neife nunca te pedirá pagar a otra cuenta ni te pedirá datos de tu tarjeta.</p>
+                </div>
+              ) : null}
+              {!cuentaPago && porPagar.length ? <p className="seg-nota">Confirma los datos de transferencia directamente con tu asesor antes de pagar.</p> : null}
+            </section>
+          ) : null}
+          {pendientes.length > 0 ? (
+            <section className="seg-tarjeta" aria-labelledby="t-pend">
+              <h2 id="t-pend">Lo que necesita de ti</h2>
+              <ul className="lista-simple">
+                {pendientes.map((p) => (
+                  <li key={p.id}>
+                    <Icono nombre="circulo" tam={12} /> {p.texto}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {perfil && perfil.precioInforme > 0 && ["aceptada", "informe"].includes(s.estado) ? (
+            <p className="seg-nota-caja">
+              <strong>Informe: {pesos(perfil.precioInforme)}.</strong>{" "}
+              <span style={{ whiteSpace: "pre-line" }}>{perfil.instruccionesPago || "Tu asesor te indicará cómo pagar."}</span>
+            </p>
+          ) : null}
+          {!sinInforme ? (
+            <div className="botones">
+              <a className="btn btn-primario" href={`/api/seguimiento/${s.codigo}/pdf`}>
+                <Icono nombre="descargar" tam={17} /> Descargar informe (PDF)
+              </a>
+            </div>
+          ) : null}
+          {s.asesorId && s.estado !== "nueva" && s.estado !== "rechazada" ? (
+            <p>
+              <a href={`/api/seguimiento/${encodeURIComponent(s.codigo)}/avance`} className="btn btn-secundario btn-chico">
+                Descargar el avance de mi caso (PDF)
+              </a>
+            </p>
+          ) : null}
+
+        <div className="seg-solo-estrecho">{documentos("a")}</div>
 
         {puedeReservar ? (
           <section className="seg-tarjeta" aria-labelledby="t-hora">
@@ -154,31 +359,20 @@ export default async function Seguimiento({
             {sp.hora === "ocupada" ? <p className="aviso aviso-error" role="alert">Esa hora ya no está libre. Elige otra.</p> : null}
             {sp.hora === "limite" ? <p className="aviso aviso-error" role="alert">Hiciste muchas reservas hoy. Escríbele a tu asesor.</p> : null}
             {sp.hora === "ya" ? <p className="aviso aviso-info" role="status">Ya tienes una hora reservada. Si necesitas cambiarla, avísale a tu asesor.</p> : null}
+            {sp.hora === "error" ? <p className="aviso aviso-error" role="alert">No pudimos registrar la reserva. No se guardó una hora; inténtalo otra vez o contacta a tu asesor.</p> : null}
             {reserva ? (
               <p className="seg-reservada">
                 <span>Tu próxima hora</span>
                 <strong>{nombreDiaLargo(reserva.fecha)} · {reserva.hora}</strong>
                 <small>Para cambiarla, avísale a tu asesor.</small>
+                <a className="btn btn-secundario btn-chico" href={`/api/seguimiento/${encodeURIComponent(s.codigo)}/cita`}>Agregar a mi calendario</a>
               </p>
             ) : huecos.length === 0 ? (
               <p className="seg-nota">{asesor} no tiene horas abiertas por ahora. Te contactará con los datos que dejaste.</p>
             ) : (
               <form action={reservarMiHora} className="reserva">
                 <input type="hidden" name="codigo" value={s.codigo} />
-                <div className="reserva-dias">
-                  {huecos.slice(0, 5).map((dia) => (
-                    <fieldset key={dia.fecha} className="reserva-dia">
-                      <legend>{diaCorto(dia.fecha)}</legend>
-                      {dia.horas.map((hora) => (
-                        <label key={hora} className="reserva-hora">
-                          <input type="radio" name="hora" value={`${dia.fecha}|${hora}`} required />
-                          <span>{hora}</span>
-                        </label>
-                      ))}
-                    </fieldset>
-                  ))}
-                </div>
-                <button type="submit" className="btn btn-primario">Reservar hora elegida</button>
+                <SelectorHora dias={huecos.slice(0, 7)} />
               </form>
             )}
           </section>
@@ -221,46 +415,11 @@ export default async function Seguimiento({
             <p style={{ marginTop: 6 }}>Puedes pedir a otro asesor o acudir a la Corporación de Asistencia Judicial de tu región.</p>
           </div>
         )}
+        </div>
+
       </div>
 
-      <section className="datos-persona" aria-labelledby="t-mis-datos">
-        <h2 id="t-mis-datos">Tus datos</h2>
-        {sp.guardado ? <p className="aviso aviso-ok" role="status">Listo, guardamos tu preferencia.</p> : null}
-        <p className="ayuda">
-          Al terminar la asesoría, tus datos se borran {s.conservarDatos ? "solo si desmarcas esta opción" : "automáticamente"}
-          {` (${DIAS_DE_GRACIA} días después, para que alcances a descargar tu informe).`}
-        </p>
-        <form action={cambiarConservacion} style={{ display: "grid", gap: 10 }}>
-          <input type="hidden" name="codigo" value={s.codigo} />
-          <label className="opcion">
-            <input type="checkbox" name="conservar" defaultChecked={s.conservarDatos} />
-            <span>Guardar mis datos para ayudarme de nuevo en el futuro</span>
-          </label>
-          <div className="botones"><button className="btn btn-secundario btn-chico" type="submit">Guardar preferencia</button></div>
-        </form>
-      </section>
-
-      <details className="borrar-datos" open={Boolean(sp.borrar)} style={{ marginTop: 20 }}>
-        <summary>Borrar mis datos</summary>
-        <form action={borrarMisDatos} style={{ display: "grid", gap: 12, marginTop: 12 }}>
-          <input type="hidden" name="codigo" value={s.codigo} />
-          <p className="ayuda">
-            Se elimina tu solicitud, tu informe y todo el historial. No se puede deshacer, y {asesor} ya no podrá verlos.
-          </p>
-          {sp.borrar === "confirma" ? <p className="error-campo" role="alert">Marca la casilla para confirmar.</p> : null}
-          {sp.borrar === "limite" ? <p className="error-campo" role="alert">Muchos intentos seguidos. Prueba más tarde.</p> : null}
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input type="checkbox" name="confirmo" /> Entiendo que se borra todo
-          </label>
-          <div className="botones">
-            <button className="btn btn-secundario btn-chico" type="submit">Borrar definitivamente</button>
-          </div>
-        </form>
-      </details>
-
-      <p className="ayuda" style={{ marginTop: 24 }}>
-        Orientación general. No reemplaza a un abogado ni constituye patrocinio.
-      </p>
+      <p className="ayuda seg-pie">Orientación general. No reemplaza a un abogado ni constituye patrocinio.</p>
     </div>
   );
 }

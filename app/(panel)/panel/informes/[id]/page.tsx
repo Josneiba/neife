@@ -7,7 +7,7 @@ import { Icono } from "@/components/Iconos";
 import { requerirAbogado } from "@/lib/guards";
 import { listarPendientes, obtenerInforme, obtenerSolicitudAsesor } from "@/lib/datos";
 import { auditar } from "@/lib/db";
-import { folio } from "@/lib/formato";
+import { } from "@/lib/formato";
 import { entregarInforme } from "@/lib/acciones/panel";
 
 export const metadata: Metadata = { title: "Informe" };
@@ -35,7 +35,7 @@ export default async function DetalleInforme({
     <>
       <header className="p-cab">
         <div className="p-cab-izq">
-          <h1>Informe {folio(s.codigo)}</h1>
+          <h1>Informe {s.codigoSeguimiento}</h1>
           <span className="p-sub">
             <Link href={`/panel/solicitudes/${s.id}`}>Volver al caso</Link>
           </span>

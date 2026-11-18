@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { cronAutorizado } from "@/lib/cron";
 import { getDb } from "@/lib/db";
 import { enviarCorreo } from "@/lib/correo";
 import { revisarNormas } from "@/lib/revision-normas";
@@ -13,8 +14,7 @@ export const maxDuration = 60;
  * Avisa por correo al administrador solo si hubo cambios o fallas.
  */
 export async function GET(req: NextRequest) {
-  const secreto = process.env.CRON_SECRET;
-  if (!secreto || req.headers.get("authorization") !== `Bearer ${secreto}`) {
+  if (!cronAutorizado(req)) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
   const r = await revisarNormas({ maximo: 6 });

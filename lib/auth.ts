@@ -1,3 +1,4 @@
+import { vincularCasosPrevios } from "./vincular-casos";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
@@ -53,6 +54,14 @@ export async function iniciarSesion(usuarioId: number) {
     path: "/",
     maxAge: DURACION_SEGUNDOS,
   });
+  // Las solicitudes hechas antes sin cuenta, con este mismo correo ya verificado, pasan a «Mi cuenta».
+  try {
+    const d = await getDb();
+    const r = await d.execute({ sql: "SELECT email FROM usuarios WHERE id = ? AND rol = 'cliente' AND email_verificado = 1", args: [usuarioId] });
+    if (r.rows[0]) await vincularCasosPrevios(usuarioId, String(r.rows[0].email));
+  } catch {
+    /* no debe impedir el ingreso */
+  }
 }
 
 export async function cerrarSesionActual() {

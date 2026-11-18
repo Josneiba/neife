@@ -1,3 +1,4 @@
+import { esAbogado } from "./verificacion-titulo";
 import { getDb } from "./db";
 import { cifrar, descifrarSeguro } from "./crypto";
 import type { Estado } from "./etapas";
@@ -19,6 +20,16 @@ export type Perfil = {
   instruccionesPago: string;
   publicado: boolean;
   estado: string;
+  /** Fecha en que el administrador verificó el título; vacío si aún no. */
+  verificadoEn: string;
+  /** Código del certificado de título; solo si ya se verificó con el nuevo proceso y es abogado/a. */
+  codigoPublico: string;
+  /** Dirección de la oficina (opcional). */
+  direccion: string;
+  /** Una línea por servicio: «Consulta de 30 min: $20.000». */
+  honorarios: string[];
+  lat: number | null;
+  lng: number | null;
 };
 
 type Fila = Record<string, unknown>;
@@ -38,6 +49,15 @@ function aPerfil(f: Fila): Perfil {
     instruccionesPago: String(f.instrucciones_pago),
     publicado: Number(f.publicado) === 1,
     estado: String(f.estado),
+    verificadoEn: String(f.verificado_en ?? ""),
+    codigoPublico:
+      esAbogado(String(f.titulo)) && String(f.verificado_en ?? "") !== "" && String(f.verificacion_nota ?? "") !== "previo"
+        ? String(f.registro)
+        : "",
+    direccion: String(f.direccion ?? ""),
+    lat: f.lat == null ? null : Number(f.lat),
+    lng: f.lng == null ? null : Number(f.lng),
+    honorarios: String(f.honorarios ?? "").split("\n").map((l) => l.trim()).filter(Boolean),
   };
 }
 
@@ -57,6 +77,15 @@ export async function obtenerAsesorPublico(id: number): Promise<Perfil | null> {
   const r = await d.execute({
     sql: `${SELECT_PERFIL} WHERE u.id = ? AND u.rol = 'abogado' AND u.estado = 'activo' AND p.publicado = 1`,
     args: [id],
+  });
+  return r.rows[0] ? aPerfil(r.rows[0]) : null;
+}
+
+export async function obtenerAsesorPorSlug(slug: string): Promise<Perfil | null> {
+  const d = await getDb();
+  const r = await d.execute({
+    sql: `${SELECT_PERFIL} WHERE p.slug = ? AND u.rol = 'abogado' AND u.estado = 'activo' AND p.publicado = 1`,
+    args: [slug.slice(0, 120)],
   });
   return r.rows[0] ? aPerfil(r.rows[0]) : null;
 }
@@ -107,6 +136,7 @@ export type Solicitud = {
   nombre: string;
   email: string;
   telefono: string;
+  contraparte: string;
   estado: Estado;
   motivoRechazo: string;
   derivarOk: boolean;
@@ -117,6 +147,10 @@ export type Solicitud = {
   proximoContacto: string;
   resultado: string;
   origen: string;
+  /** Fecha (AAAA-MM-DD) en que ocurrió lo que se cuenta; opcional. */
+  fechaHecho: string;
+  mandatoPropuesto: string;
+  mandatoEn: string;
   creadoEn: string;
   actualizadoEn: string;
 };
@@ -136,6 +170,7 @@ function aSolicitud(f: Fila): Solicitud {
     nombre: descifrarSeguro(String(f.nombre_enc), "solicitud.nombre"),
     email: descifrarSeguro(String(f.email_enc), "solicitud.email"),
     telefono: f.telefono_enc ? descifrarSeguro(String(f.telefono_enc), "solicitud.telefono") : "",
+    contraparte: f.contraparte_enc ? descifrarSeguro(String(f.contraparte_enc), "solicitud.contraparte") : "",
     estado: String(f.estado) as Solicitud["estado"],
     motivoRechazo: String(f.motivo_rechazo),
     derivarOk: Number(f.derivar_ok) === 1,
@@ -146,6 +181,9 @@ function aSolicitud(f: Fila): Solicitud {
     proximoContacto: String(f.proximo_contacto ?? ""),
     resultado: String(f.resultado ?? ""),
     origen: String(f.origen ?? "web"),
+    fechaHecho: String(f.fecha_hecho ?? ""),
+    mandatoPropuesto: String(f.mandato_propuesto ?? ""),
+    mandatoEn: String(f.mandato_en ?? ""),
     creadoEn: String(f.creado_en),
     actualizadoEn: String(f.actualizado_en),
   };
@@ -197,6 +235,7 @@ export type CasoAbierto = {
   urgencia: string;
   presupuesto: string;
   extracto: string;
+  fechaHecho: string;
   creadoEn: string;
   sinTomar24h: boolean;
   puntaje: number;
@@ -205,7 +244,7 @@ export type CasoAbierto = {
 };
 
 const CAMPOS_CASO_ABIERTO =
-  "id, codigo_seguimiento, materia, region, urgencia, presupuesto, relato_enc, creado_en, CASE WHEN creado_en < ahora(-1) THEN 1 ELSE 0 END AS sin_tomar_24h";
+  "id, codigo_seguimiento, materia, region, urgencia, presupuesto, relato_enc, contraparte_enc, fecha_hecho, creado_en, CASE WHEN creado_en < ahora(-1) THEN 1 ELSE 0 END AS sin_tomar_24h";
 
 function decodificarCasoAbierto(f: Fila) {
   const relato = descifrarSeguro(String(f.relato_enc), "solicitud.relato");
@@ -223,6 +262,8 @@ function decodificarCasoAbierto(f: Fila) {
     urgencia: String(f.urgencia),
     presupuesto: String(f.presupuesto),
     relato,
+    contraparte: f.contraparte_enc ? descifrarSeguro(String(f.contraparte_enc), "solicitud.contraparte") : "",
+    fechaHecho: String(f.fecha_hecho ?? ""),
     creadoEn: String(f.creado_en),
     sinTomar24h: Number(f.sin_tomar_24h) === 1,
     puntaje: calidad.puntaje,
@@ -262,6 +303,7 @@ export async function listarBandeja(asesorId: number, f: FiltrosBandeja = {}): P
       urgencia: s.urgencia,
       presupuesto: s.presupuesto,
       extracto: s.relato.length > 420 ? `${s.relato.slice(0, 420).trim()}…` : s.relato,
+      fechaHecho: s.fechaHecho,
       creadoEn: s.creadoEn,
       sinTomar24h: s.sinTomar24h,
       puntaje: s.puntaje,
@@ -276,7 +318,7 @@ export async function contarBandeja(): Promise<number> {
   return Number(r.rows[0]?.n ?? 0);
 }
 
-export async function obtenerCasoAbierto(id: number): Promise<(CasoAbierto & { relato: string }) | null> {
+export async function obtenerCasoAbierto(id: number): Promise<(CasoAbierto & { relato: string; contraparte: string }) | null> {
   const d = await getDb();
   const r = await d.execute({
     sql: `SELECT ${CAMPOS_CASO_ABIERTO} FROM solicitudes WHERE id = ? AND asesor_id IS NULL AND estado = 'nueva'`,
@@ -416,7 +458,7 @@ export async function obtenerInformePorSolicitud(solicitudId: number): Promise<I
 export async function listarInformesAsesor(asesorId: number) {
   const d = await getDb();
   const r = await d.execute({
-    sql: `SELECT i.id, i.estado, i.entregado, i.actualizado_en, s.codigo, s.materia
+    sql: `SELECT i.id, i.estado, i.entregado, i.actualizado_en, s.codigo, s.codigo_seguimiento, s.materia
             FROM informes i JOIN solicitudes s ON s.id = i.solicitud_id
            WHERE i.asesor_id = ? ORDER BY i.actualizado_en DESC, i.id DESC`,
     args: [asesorId],
@@ -427,6 +469,7 @@ export async function listarInformesAsesor(asesorId: number) {
     entregado: Number(f.entregado) === 1,
     actualizadoEn: String(f.actualizado_en),
     codigo: String(f.codigo),
+    codigoSeguimiento: String(f.codigo_seguimiento),
     materia: String(f.materia),
   }));
 }

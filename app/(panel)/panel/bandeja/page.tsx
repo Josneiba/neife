@@ -3,10 +3,12 @@ import Link from "next/link";
 import { Icono } from "@/components/Iconos";
 import { requerirAbogado } from "@/lib/guards";
 import { contarBandeja, listarBandeja, obtenerPerfil, type FiltrosBandeja } from "@/lib/datos";
+import { plazoDe } from "@/lib/plazos";
 import { espera } from "@/lib/formato";
 import { nombreNivel } from "@/lib/solicitud-calidad";
 import { guardarFiltrosComoAvisos } from "@/lib/acciones/avisos";
 import { MATERIAS, nombreMateria, nombreUrgencia, PRESUPUESTOS, REGIONES, URGENCIAS } from "@/lib/materias";
+import { hoyLocal } from "@/lib/crm/fechas";
 
 export const metadata: Metadata = { title: "Bandeja de solicitudes" };
 export const dynamic = "force-dynamic";
@@ -61,7 +63,27 @@ export default async function Bandeja({ searchParams }: { searchParams: Promise<
           </select>
         </label>
         <label>
-          <span>Presupuesto de la persona</span>
+          <span>Región</span>
+          <select name="region" defaultValue={filtros.region ?? ""}>
+            <option value="">Todas</option>
+            {REGIONES.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </label>
+        <label className="bj-texto">
+          <span>Situación o circunstancias</span>
+          <input type="search" name="q" defaultValue={filtros.texto} placeholder="Ej.: despido, pensión, arriendo…" maxLength={80} />
+        </label>
+        <div className="bj-acciones">
+          <button type="submit" className="btn btn-chico">Filtrar</button>
+          {filtrando ? <Link href="/panel/bandeja" className="btn btn-secundario btn-chico">Quitar filtros</Link> : null}
+        </div>
+        <details className="bj-mas" open={Boolean(filtros.presupuesto || filtros.urgencia || filtros.infoMinima || filtros.soloMisMaterias)}>
+          <summary>Más filtros</summary>
+          <div className="bj-mas-campos">
+        <label>
+          <span>Presupuesto</span>
           <select name="presupuesto" defaultValue={filtros.presupuesto ?? ""}>
             <option value="">Cualquiera</option>
             {PRESUPUESTOS.map((p) => (
@@ -79,25 +101,12 @@ export default async function Bandeja({ searchParams }: { searchParams: Promise<
           </select>
         </label>
         <label>
-          <span>Región</span>
-          <select name="region" defaultValue={filtros.region ?? ""}>
-            <option value="">Todas</option>
-            {REGIONES.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Información de la solicitud</span>
+          <span>Qué tan completa viene</span>
           <select name="info" defaultValue={filtros.infoMinima ? String(filtros.infoMinima) : ""}>
             <option value="">Cualquiera</option>
             <option value="45">Media o completa</option>
             <option value="75">Solo completa</option>
           </select>
-        </label>
-        <label className="bj-texto">
-          <span>Situación o circunstancias</span>
-          <input type="search" name="q" defaultValue={filtros.texto} placeholder="Ej.: despido, pensión, arriendo…" maxLength={80} />
         </label>
         {tieneMaterias ? (
           <label className="bj-check">
@@ -105,10 +114,8 @@ export default async function Bandeja({ searchParams }: { searchParams: Promise<
             <span>Solo las materias de mi perfil</span>
           </label>
         ) : null}
-        <div className="bj-acciones">
-          <button type="submit" className="btn btn-chico">Filtrar</button>
-          {filtrando ? <Link href="/panel/bandeja" className="btn btn-secundario btn-chico">Quitar filtros</Link> : null}
-        </div>
+          </div>
+        </details>
       </form>
 
       <div className="bj-fila-resumen">
@@ -142,6 +149,10 @@ export default async function Bandeja({ searchParams }: { searchParams: Promise<
                 <div><dt>Presupuesto</dt><dd>{c.presupuesto || "No indicado"}</dd></div>
                 <div><dt>Región</dt><dd>{c.region || "No indicada"}</dd></div>
                 <div><dt>Recibida</dt><dd>hace {espera(c.creadoEn)}</dd></div>
+                {(() => {
+                  const pl = plazoDe(c.materia, c.fechaHecho, hoyLocal());
+                  return pl ? <div><dt>Plazo</dt><dd className="plazo-chip" data-tono={pl.tono}>{pl.texto}</dd></div> : null;
+                })()}
               </dl>
               <p className="bj-meta">
                 <span className={`bj-nivel-${c.nivel}`} title={c.falta.length ? `Falta: ${c.falta.join(", ")}` : "Trae lo necesario para evaluarla"}>

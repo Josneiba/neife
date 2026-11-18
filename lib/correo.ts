@@ -90,11 +90,14 @@ export const correos = {
       texto: `Llegó una solicitud nueva de ${materia}.\n\nResponde pronto: el primer contacto es lo que más pesa para cerrar.\n${enlace}`,
     });
   },
-  confirmacion(para: string, enlace: string, abierta = false) {
+  confirmacion(para: string, enlace: string, abierta = false, codigo = "", enlaceSeguir = "") {
+    const bloqueCodigo = codigo
+      ? `\n\nTu código de seguimiento: ${codigo}\nCon él y este correo puedes ver en qué etapa va tu caso en cualquier momento, sin cuenta:\n${enlaceSeguir}`
+      : "";
     return enviarCorreo({
       para,
       asunto: "Recibimos tu solicitud",
-      texto: `${abierta ? "Tu solicitud quedó disponible en la bandeja para que la tome un asesor." : "Tu solicitud llegó al asesor."} Te contactará por este medio o por teléfono.\n\nSigue el avance aquí, sin necesidad de cuenta:\n${enlace}\n\nGuarda este enlace: es la única forma de volver a ver tu caso.`,
+      texto: `${abierta ? "Tu solicitud quedó disponible en la bandeja para que la tome un asesor." : "Tu solicitud llegó al asesor."} Te contactará por este medio o por teléfono.${bloqueCodigo}\n\nEste es tu enlace privado, con todo el detalle de tu caso:\n${enlace}\n\nGuárdalo y no lo compartas.`,
     });
   },
   avance(para: string, texto: string, enlace: string) {
@@ -102,6 +105,48 @@ export const correos = {
       para,
       asunto: "Novedades de tu solicitud",
       texto: `${texto}\n\nMira el avance completo aquí:\n${enlace}`,
+    });
+  },
+  mandatoPropuesto(para: string, nombreAsesor: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Tu asesor te propone un mandato",
+      texto: `${nombreAsesor} te propone un mandato: qué hará por ti y a qué honorarios.\n\nLéelo y, si estás de acuerdo, acéptalo con un clic en tu seguimiento:\n${enlace}\n\nSi algo no te calza, escríbele antes de aceptar.`,
+    });
+  },
+  mandatoAceptado(para: string, resumen: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Aceptaron tu mandato",
+      texto: `${resumen}\n\nQuedó registrado en tu CRM como mandato.\n${enlace}`,
+    });
+  },
+  mensajeNuevo(para: string, deQuien: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Tienes un mensaje nuevo en tu caso",
+      texto: `${deQuien} te escribió en Neife. Por seguridad, el mensaje no va en este correo: léelo y responde aquí.\n${enlace}`,
+    });
+  },
+  cobroNuevo(para: string, nombreAsesor: string, concepto: string, monto: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Tienes un cobro pendiente",
+      texto: `${nombreAsesor} te envió un cobro: ${concepto} (${monto}).\n\nLos datos para transferir están en tu seguimiento. Antes de transferir, confirma con tu asesor que son correctos.\n${enlace}`,
+    });
+  },
+  transferenciaInformada(para: string, resumen: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Te informaron una transferencia",
+      texto: `${resumen}\n\nRevisa tu cuenta y márcalo como pagado en el caso.\n${enlace}`,
+    });
+  },
+  pagoConfirmado(para: string, nombreAsesor: string, concepto: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Pago confirmado",
+      texto: `${nombreAsesor} confirmó tu pago: ${concepto}.\n\n${enlace}`,
     });
   },
   informeListo(para: string, nombreAsesor: string, enlace: string) {
@@ -123,6 +168,20 @@ export const correos = {
       para,
       asunto: "Nueva solicitud disponible en la bandeja",
       texto: `Llegó una solicitud que coincide con tus avisos:\n\n${resumen}\n\nLéela y decide si la tomas:\n${enlace}\n\nCambia qué avisos recibes en Mi perfil.`,
+    });
+  },
+  cuentaAprobada(para: string, nombre: string, enlace: string) {
+    return enviarCorreo({
+      para,
+      asunto: "Verificamos tu cuenta de asesor",
+      texto: `Hola ${nombre.split(" ")[0]},\n\nVerificamos tus datos y tu cuenta ya está activa. Desde ahora ves la bandeja de solicitudes y tu perfil es público.\n\nPrimeros pasos (3 minutos): escribe tu presentación, define tus horas y elige qué avisos quieres recibir:\n${enlace}\n\nEquipo Neife`,
+    });
+  },
+  cuentaRechazada(para: string, nombre: string, motivo: string) {
+    return enviarCorreo({
+      para,
+      asunto: "No pudimos verificar tu cuenta de asesor",
+      texto: `Hola ${nombre.split(" ")[0]},\n\nNo pudimos verificar tu cuenta por este motivo:\n${motivo}\n\nSi crees que es un error o quieres enviarnos otro dato, responde a este correo.\n\nEquipo Neife`,
     });
   },
   horaReservada(para: string, cuando: string, enlace: string) {

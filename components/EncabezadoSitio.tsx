@@ -19,6 +19,7 @@ export async function EncabezadoSitio() {
               { href: "/#como", texto: "Cómo funciona", opcional: true },
               { href: "/asesoria", texto: "Asesores", opcional: true },
               { href: "/#contacto", texto: "Contacto", opcional: true },
+              { href: "/seguir", texto: "Seguir mi caso" },
             ]}
           />
           <span className="nav-sep" aria-hidden="true" />
