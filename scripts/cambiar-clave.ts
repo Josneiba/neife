@@ -12,7 +12,7 @@ async function main() {
   }
   const d = await getDb();
   const r = await d.execute({
-    sql: "UPDATE usuarios SET password_hash = ? WHERE email = ?",
+    sql: "UPDATE usuarios SET password_hash = ?, sesion_version = sesion_version + 1 WHERE email = ?",
     args: [await hashClave(clave), email.toLowerCase()],
   });
   console.log(r.rowsAffected ? "Contraseña cambiada." : "No existe una cuenta con ese correo.");

@@ -32,7 +32,7 @@ async function ingresarInterna(_prev: EstadoForm, fd: FormData): Promise<EstadoF
 
   const d = await getDb();
   const r = await d.execute({
-    sql: "SELECT id, password_hash, rol, email_verificado FROM usuarios WHERE email = ?",
+    sql: "SELECT id, password_hash, rol, email_verificado, sesion_version FROM usuarios WHERE email = ?",
     args: [parsed.data.email],
   });
   const fila = r.rows[0];
@@ -45,7 +45,7 @@ async function ingresarInterna(_prev: EstadoForm, fd: FormData): Promise<EstadoF
   }
 
   await reiniciar(claveLimite);
-  await iniciarSesion(Number(fila.id));
+  await iniciarSesion(Number(fila.id), Number(fila.sesion_version ?? 0));
   await auditar(Number(fila.id), "ingreso", "usuario", Number(fila.id));
 
   const rol = String(fila.rol);

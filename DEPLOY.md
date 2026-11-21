@@ -10,6 +10,7 @@ Sube la carpeta a un repositorio **privado**. `.env.local` no se sube (ya está 
 1. Crea un proyecto en supabase.com (elige la región más cercana, por ejemplo São Paulo). Anota la contraseña de la base.
 2. `Project Settings > Database > Connection string > Transaction pooler`. Copia la dirección (puerto **6543**) y reemplaza `[YOUR-PASSWORD]`. Si la clave tiene símbolos, codifícala (por ejemplo `@` se escribe `%40`).
 3. Esa dirección es tu `DATABASE_URL`. Usa también la conexión directa/session (puerto **5432**) como `DIRECT_URL`, para Prisma Migrate. `npm run db:migrate` aplica el esquema; `npm run db:setup` comprueba la conexión.
+   Las conexiones remotas validan el certificado TLS; no uses `DB_TLS_PERMITIR_NO_VALIDO=1` en producción.
 4. Las tablas quedan con **RLS activado y sin políticas**: la API pública de Supabase no puede leerlas. La app entra con su conexión directa.
 
 ## 3. Correo: Resend

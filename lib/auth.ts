@@ -39,8 +39,21 @@ export async function verificarClave(clave: string, hash: string | null): Promis
   return hash !== null && ok;
 }
 
-export async function iniciarSesion(usuarioId: number) {
-  const token = await new SignJWT({})
+export function sesionVigente(versionToken: unknown, versionActual: unknown): boolean {
+  const token = Number(versionToken ?? 0);
+  const actual = Number(versionActual ?? 0);
+  return Number.isSafeInteger(token) && token >= 0 && token === actual;
+}
+
+export async function iniciarSesion(usuarioId: number, versionEsperada?: number) {
+  const d = await getDb();
+  const sv = await d.execute({ sql: "SELECT sesion_version FROM usuarios WHERE id = ?", args: [usuarioId] });
+  if (!sv.rows[0]) throw new Error("No se encontró la cuenta para iniciar sesión.");
+  const version = Number(sv.rows[0].sesion_version ?? 0);
+  if (versionEsperada !== undefined && !sesionVigente(versionEsperada, version)) {
+    throw new Error("La contraseña cambió durante el ingreso. Vuelve a intentarlo.");
+  }
+  const token = await new SignJWT({ sv: version })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(usuarioId))
     .setIssuedAt()
@@ -56,7 +69,6 @@ export async function iniciarSesion(usuarioId: number) {
   });
   // Las solicitudes hechas antes sin cuenta, con este mismo correo ya verificado, pasan a «Mi cuenta».
   try {
-    const d = await getDb();
     const r = await d.execute({ sql: "SELECT email FROM usuarios WHERE id = ? AND rol = 'cliente' AND email_verificado = 1", args: [usuarioId] });
     if (r.rows[0]) await vincularCasosPrevios(usuarioId, String(r.rows[0].email));
   } catch {
@@ -80,11 +92,12 @@ export const usuarioActual = cache(async (): Promise<Usuario | null> => {
     if (!Number.isInteger(id)) return null;
     const d = await getDb();
     const r = await d.execute({
-      sql: "SELECT id, email, nombre, rol, estado FROM usuarios WHERE id = ?",
+      sql: "SELECT id, email, nombre, rol, estado, sesion_version FROM usuarios WHERE id = ?",
       args: [id],
     });
     const fila = r.rows[0];
     if (!fila) return null;
+    if (!sesionVigente(payload.sv, fila.sesion_version)) return null;
     return {
       id: Number(fila.id),
       email: String(fila.email),

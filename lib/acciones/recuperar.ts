@@ -49,7 +49,10 @@ export async function restablecerClave(_prev: EstadoForm, fd: FormData): Promise
     const id = await gastarToken(parsed.data.token, "recuperar");
     if (!id) return { error: "Este enlace ya se usó o venció. Pide uno nuevo." } as EstadoForm;
     const d = await getDb();
-    await d.execute({ sql: "UPDATE usuarios SET password_hash = ? WHERE id = ?", args: [await hashClave(parsed.data.clave), id] });
+    await d.execute({
+      sql: "UPDATE usuarios SET password_hash = ?, sesion_version = sesion_version + 1 WHERE id = ?",
+      args: [await hashClave(parsed.data.clave), id],
+    });
     await auditar(id, "clave_restablecida", "usuario", id);
     return { ok: "listo", valores: { id: String(id) } } as EstadoForm;
   }, "cambiar la contraseña");

@@ -19,7 +19,7 @@ async function main() {
   const existe = await d.execute({ sql: "SELECT id FROM usuarios WHERE email = ?", args: [email.toLowerCase()] });
   if (existe.rows[0]) {
     await d.execute({
-      sql: "UPDATE usuarios SET rol = 'admin', estado = 'activo', password_hash = ?, nombre = ? WHERE id = ?",
+      sql: "UPDATE usuarios SET rol = 'admin', estado = 'activo', password_hash = ?, sesion_version = sesion_version + 1, nombre = ? WHERE id = ?",
       args: [hash, nombre, existe.rows[0].id],
     });
     console.log(`Se actualizó la cuenta existente ${email} como administrador.`);

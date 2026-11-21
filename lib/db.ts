@@ -47,19 +47,38 @@ export type Db = {
 type Global = typeof globalThis & { __neifePool?: Pool; __neifeListo?: Promise<void> };
 const g = globalThis as Global;
 
+export function opcionesConexionSegura(url: string, permitirNoValidado = false) {
+  const normalizada = url.replace(/^(postgres(?:ql)?:\/\/[^/?#]*@)(?=\/)/i, "$1localhost");
+  const connection = new URL(normalizada);
+  const hosts = (connection.searchParams.get("host") ?? connection.hostname)
+    .split(",")
+    .map((host) => host.replace(/^\[|\]$/g, "").toLowerCase());
+  const local = hosts.length > 0 && hosts.every(
+    (host) => !host || host === "localhost" || host === "127.0.0.1" || host === "::1" || host.startsWith("/"),
+  );
+  if (!local) {
+    // Connection-string SSL flags can override Pool's ssl option in node-postgres.
+    // Remove downgrade/disable flags so remote connections always use verified TLS.
+    connection.searchParams.delete("sslmode");
+    connection.searchParams.delete("ssl");
+  }
+  return {
+    connectionString: connection.toString(),
+    ssl: local ? false : { rejectUnauthorized: !permitirNoValidado },
+  };
+}
+
 function crearPool(): Pool {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("Falta DATABASE_URL (la cadena de conexión de Supabase o de tu Postgres). Mira .env.example.");
   }
-  const local = /@(localhost|127\.0\.0\.1|\[::1\])/.test(url) || url.includes("sslmode=disable");
   return new Pool({
-    connectionString: url,
+    ...opcionesConexionSegura(url, process.env.DB_TLS_PERMITIR_NO_VALIDO === "1"),
     // En Vercel cada instancia usa pocas conexiones; Supabase las agrupa en su pooler.
     max: process.env.VERCEL ? 3 : 10,
     idleTimeoutMillis: 20_000,
     connectionTimeoutMillis: 8_000,
-    ssl: local ? false : { rejectUnauthorized: false },
   });
 }
 

@@ -74,6 +74,7 @@ Etapas (el «número de avance» que ven asesor y persona): 1 Recibida, 2 En con
 - La cuenta bancaria y el número de operación se cifran con `DATA_ENCRYPTION_KEY`; la vista de los datos de depósito se audita. La persona informa fecha y número de operación, y el asesor confirma o anula el cobro. **No se procesan tarjetas ni pagos en línea.**
 - La migración `20261116000000_pagos` crea las tablas de cuentas de depósito y cobros. Respáldala y aplícala con `npm run db:migrate` antes de usar los pagos. `npm run build` también aplica migraciones pendientes mediante `DIRECT_URL`; no lo ejecutes contra una base sin respaldo y autorización.
 - La migración `20261117000000_mensajes` crea el hilo cifrado entre la persona y su asesor. Aplícala con `npm run db:migrate` antes de habilitar los mensajes. No se ejecutó durante esta integración.
+- La migración `20261119000000_sesion_version` habilita revocar sesiones al cambiar la contraseña. Las conexiones a Postgres remoto validan TLS; respalda la base y aplica las migraciones pendientes antes de desplegar.
 
 ## Subir las leyes (tu parte como desarrollador)
 
